@@ -76,7 +76,7 @@ export default function App() {
             const awayTeam = appState.teams.find(t => t.id === awayId)!
             const tState = tournamentReducer(null, {
                 type: 'INIT_TOURNAMENT',
-                payload: { mode: 'Series', teams: [homeTeam, awayTeam], name: `${homeTeam.short} vs ${awayTeam.short} Series`, userTeamId: appState.userTeamId, overs }
+                payload: { mode: 'Series', teams: [homeTeam, awayTeam], name: `${homeTeam.short} vs ${awayTeam.short} Series`, userTeamId: appState.userTeamId, overs, seriesMatches }
             })!
             dispatch({ type: 'INIT_TOURNAMENT', payload: tState });
         } else if (appState.activeMode === 'WorldCup' && !appState.activeTournamentId) {
@@ -202,6 +202,55 @@ export default function App() {
         dispatch({ type: 'UPDATE_CAREER', payload: updatedC });
     }
 
+    const handleStartSeason = () => {
+        if (!appState.career) return;
+        
+        // 1. Mark season as started in Career
+        const updatedC = careerReducer(appState.career, { type: 'START_SEASON' });
+        dispatch({ type: 'UPDATE_CAREER', payload: updatedC });
+
+        // 2. Initialize Tournament for the Season
+        // Use Career Squad + other IPL teams
+        const userTeam = appState.career.squad;
+        const otherTeams = appState.teams
+            .filter(t => ['csk', 'mi', 'rcb', 'kkr', 'rr', 'srh', 'dc', 'pbks', 'gt', 'lsg'].includes(t.id))
+            .filter(t => t.id !== userTeam.id); // Exclude if user picked an IPL team base
+            
+        // If user created a custom team, we need 9 other teams. If they picked an existing one, we need 9 others.
+        // Simplified: Just take all IPL teams except the one matching userTeam.id (if any)
+        
+        const tournamentTeams = [userTeam, ...otherTeams].slice(0, 10); // Ensure max 10 teams
+
+        const tState = tournamentReducer(null, {
+            type: 'INIT_TOURNAMENT',
+            payload: { 
+                mode: 'IPL', // Career runs on IPL structure for now
+                teams: tournamentTeams, 
+                name: `Season ${appState.career.currentSeason}`, 
+                userTeamId: userTeam.id 
+            }
+        })!;
+        
+        dispatch({ type: 'INIT_TOURNAMENT', payload: tState });
+        
+        // 3. Navigate
+        dispatch({ type: 'SET_ACTIVE_TOURNAMENT', payload: tState.id }); // INIT_TOURNAMENT usually sets this, but let's be safe if reducer doesn't
+        navigate('Tournament');
+    }
+
+    const handleContinueSeason = () => {
+        // Just navigate to the active tournament
+        // We assume activeTournamentId matches the career season
+        if (appState.activeTournamentId) {
+            navigate('Tournament');
+        } else {
+            // Fallback: If for some reason activeTournamentId is lost but season is "started"
+            // We might need to look for a tournament with name "Season X"
+            // For now, just warn or do nothing
+            console.warn("No active tournament found for continuing season");
+        }
+    }
+
     const renderContent = () => {
         const { activeScreen, activeMode, currentMatch, auction, career, tournaments, activeTournamentId, teams, userTeamId } = appState;
 
@@ -247,6 +296,12 @@ export default function App() {
         }
 
         // 4. Mode-Specific Routing
+        if (activeMode === 'Quick') {
+             if (activeScreen === 'TeamSelect' || activeScreen === 'Home') { // Default to TeamSelect for Quick Mode if not in Match
+                return <TeamSelector mode="Quick" teams={teams} onStart={handleStartMatchSetup} onBack={handleBackToMain} />
+             }
+        }
+
         if (activeMode === 'WorldCup' || activeMode === 'IPL' || activeMode === 'Series') {
             const tournament = tournaments.find(t => t.id === activeTournamentId);
 
@@ -284,7 +339,17 @@ export default function App() {
         }
 
         if (activeMode === 'Career') {
-            return <CareerView state={career || initialCareerState} onStartCareer={handleStartCareer} onUpgradePlayer={handleUpgradePlayer} onBack={handleBackToMain} />
+            return (
+                <CareerView 
+                    state={career || initialCareerState} 
+                    onStartCareer={handleStartCareer} 
+                    onUpgradePlayer={handleUpgradePlayer} 
+                    onBack={handleBackToMain}
+                    onStartSeason={handleStartSeason}
+                    onContinueSeason={handleContinueSeason}
+                    activeSeasonId={activeTournamentId || undefined}
+                />
+            )
         }
 
         // 5. IPL Mode Selector (before auction)

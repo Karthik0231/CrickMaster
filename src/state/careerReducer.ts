@@ -3,6 +3,7 @@ export type CareerAction =
     | { type: 'START_CAREER'; payload: { team: Team } }
     | { type: 'UPGRADE_PLAYER'; payload: CareerPlayerUpgrade }
     | { type: 'EARN_REWARD'; payload: number }
+    | { type: 'START_SEASON' }
     | { type: 'END_SEASON'; payload: CareerSeason }
 
 export const initialCareerState: CareerState = {
@@ -27,6 +28,12 @@ export function careerReducer(state: CareerState, action: CareerAction): CareerS
                 userTeamId: action.payload.team.id,
                 squad: action.payload.team,
                 balance: 50,
+                isSeasonStarted: false
+            }
+
+        case 'START_SEASON':
+            return {
+                ...state,
                 isSeasonStarted: true
             }
 
@@ -58,7 +65,8 @@ export function careerReducer(state: CareerState, action: CareerAction): CareerS
                 ...state,
                 seasons: [...state.seasons, action.payload],
                 currentSeason: state.currentSeason + 1,
-                balance: state.balance + 20 // Season bonus
+                balance: state.balance + 20, // Season bonus
+                isSeasonStarted: false
             }
 
         default:

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { MatchState, InningsState, Team } from '../state/types'
 import { outcomeRuns } from '../engine/probability'
+import { calculateManOfTheMatch } from '../engine/manOfTheMatch'
 
 interface PlayerMatchStats {
   id: string
@@ -132,6 +133,20 @@ export function DetailedScorecard({ state }: { state: MatchState }) {
           </div>
         </div>
       </div>
+
+      {state.matchCompleted && (
+        <div className="mom-section" style={{ marginTop: '24px', padding: '16px', background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)', borderRadius: '12px', color: 'black', textAlign: 'center', boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)' }}>
+          <h3 style={{ margin: '0 0 8px 0', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.8 }}>Man of the Match</h3>
+          {(() => {
+             const mom = calculateManOfTheMatch(state)
+             return mom ? (
+               <div style={{ fontSize: '1.5rem', fontWeight: '900' }}>{mom.playerName}</div>
+             ) : (
+               <div>Calculating...</div>
+             )
+          })()}
+        </div>
+      )}
 
       <div className="manhattan-chart">
         <h3>Manhattan Chart</h3>

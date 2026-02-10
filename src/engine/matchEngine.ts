@@ -34,23 +34,58 @@ function phaseForInnings(inn: InningsState, config: MatchConfig): OverPhase {
 }
 
 function nextBowlerId(team: Team, totalOvers: number, over: number, innings: InningsState): string {
-  const isDeath = over >= totalOvers - 4
-  const maxOversPerBowler = totalOvers === 20 ? 4 : 10 // Standard limits
+  const isDeath = over >= totalOvers - 5
+  const isPowerplay = over < 6
+  const maxOversPerBowler = Math.ceil(totalOvers / 5)
 
-  const pool = team.players
-    .filter(p => p.role !== 'WK' && p.role !== 'BAT')
-    .filter(p => (innings.bowlerOverCounts[p.id] || 0) < maxOversPerBowler) // Bowler limit
-    .filter(p => p.id !== innings.currentBowlerId) // Cannot bowl consecutive overs
-    .map(p => ({
-      id: p.id,
-      rating: p.bowlingRating - (100 - p.fitness) / 5 + (p.role === 'BOWL' ? 10 : 0)
-    }))
-    .sort((a, b) => b.rating - a.rating)
+  // Filter available bowlers
+  const available = team.players.filter(p => {
+    if (p.role === 'WK') return false
+    if (p.id === innings.currentBowlerId) return false
+    const bowled = innings.bowlerOverCounts[p.id] || 0
+    return bowled < maxOversPerBowler
+  })
+  
+  // Calculate suitability score
+  const scoredBowlers = available.map(p => {
+    let score = p.bowlingRating
+    const isSpinner = p.name.toLowerCase().includes('spin') || p.role.includes('SPIN')
+    
+    // Role Bonus
+    if (p.role === 'BOWL') score += 10
+    if (p.role === 'ALL_ROUNDER') score += 5
 
-  if (isDeath && pool.length > 0) return pool[0].id
-  const bowlers = pool.slice(0, 5)
-  if (bowlers.length === 0) return team.players[0].id
-  return bowlers[over % bowlers.length].id
+    // Phase adjustments
+    if (isDeath) {
+        if (!isSpinner) score += 15 // Pace preferred at death
+        if (p.bowlingRating > 85) score += 10 // Best bowlers at death
+    } else if (isPowerplay) {
+        if (!isSpinner) score += 5 // Pace preferred in PP
+        if (p.bowlingRating > 80) score += 5 // Good bowlers start
+    } else {
+        // Middle overs
+        if (isSpinner) score += 15 // Spinners operate in middle
+    }
+
+    // Save best pace for death (if in middle overs)
+    if (!isDeath && !isPowerplay && !isSpinner && p.bowlingRating > 85 && (innings.bowlerOverCounts[p.id] || 0) < maxOversPerBowler - 1) {
+        score -= 15
+    }
+
+    return { id: p.id, score }
+  })
+
+  // Sort by score
+  scoredBowlers.sort((a, b) => b.score - a.score)
+
+  if (scoredBowlers.length === 0) {
+     // Fallback: anyone valid (even if consecutive check failed? No, that's illegal)
+     // This shouldn't happen with standard squad unless injuries (not implemented)
+     return team.players.find(p => p.id !== innings.currentBowlerId)?.id || team.players[0].id
+  }
+
+  // Pick top bowler
+  return scoredBowlers[0].id
 }
 
 function updateRunRate(runs: number, balls: number) {
@@ -285,9 +320,25 @@ export function getAIStrategy(inn: InningsState, config: MatchConfig, isStriker:
   const rrr = runsNeeded / (oversLeft || 1)
   const currentRR = inn.runs / (inn.balls / 6 || 1)
 
-  if (rrr > currentRR + 2.5) return 'Aggressive'
-  if (rrr < currentRR - 2 && wicketsLeft > 5) return 'Normal'
-  if (wicketsLeft < 2 && rrr > 6) return 'Aggressive'
+  // 1. Desperation / High RRR
+  if (rrr > 10) return 'Aggressive'
+
+  // 2. Ahead of the rate (Comfortable chase)
+  if (rrr < 6) {
+    // If running out of wickets, be defensive to survive
+    if (wicketsLeft < 4) return 'Defensive'
+    // Otherwise cruise
+    return 'Normal'
+  }
+
+  // 3. Falling behind
+  if (rrr > currentRR + 2) return 'Aggressive'
+
+  // 4. Last pair desperation
+  if (wicketsLeft < 2 && rrr > 8) return 'Aggressive'
+
+  // 5. Consolidate if lost wickets recently or just stabilizing
+  if (wicketsLeft < 4 && rrr < 8) return 'Defensive'
 
   return 'Normal'
 }
@@ -295,18 +346,30 @@ export function getAIStrategy(inn: InningsState, config: MatchConfig, isStriker:
 export function getAIBowlingStrategy(inn: InningsState, config: MatchConfig): Strategy {
   const wicketsLeft = 10 - inn.wickets
   const momentum = inn.momentum || 0
-
+  const totalBalls = config.overs * 6
+  const ballsLeft = totalBalls - inn.balls
+  
+  // 1. First Innings (Restriction)
   if (inn.target === undefined) {
-    if (inn.intentPhase === 'Death') return 'Aggressive'
+    if (inn.intentPhase === 'Death') return 'Defensive' // Restrict runs at death
+    if (inn.intentPhase === 'Powerplay') return 'Aggressive' // Look for early wickets
     if (wicketsLeft > 7 || momentum < -30) return 'Aggressive' // Wicket hunting
     return 'Normal'
   }
 
-  const oversLeft = ((config.overs * 6) - inn.balls) / 6
+  // 2. Second Innings (Defending Target)
+  const oversLeft = ballsLeft / 6
   const rrr = (inn.target - inn.runs) / (oversLeft || 1)
 
-  if (rrr < 7) return 'Aggressive' // Attack to stop the chase
-  if (rrr > 11) return 'Defensive' // Contain and wait for mistake
+  // Death Overs Defending
+  if (ballsLeft <= 30) {
+      if (rrr > 12) return 'Defensive' // They need a miracle, just don't bowl wides
+      if (rrr > 8) return 'Defensive' // Tight bowling
+      return 'Aggressive' // They are cruising, need wickets desperately
+  }
+
+  if (rrr < 6) return 'Aggressive' // They are cruising, attack!
+  if (rrr > 10) return 'Defensive' // Pressure is on them, keep it tight
 
   return 'Normal'
 }

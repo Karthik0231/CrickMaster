@@ -7,9 +7,12 @@ interface Props {
     onStartCareer: (team: Team) => void
     onUpgradePlayer: (upgrade: any) => void
     onBack: () => void
+    onStartSeason?: () => void
+    onContinueSeason?: () => void
+    activeSeasonId?: string
 }
 
-export function CareerView({ state, onStartCareer, onUpgradePlayer, onBack }: Props) {
+export function CareerView({ state, onStartCareer, onUpgradePlayer, onBack, onStartSeason, onContinueSeason, activeSeasonId }: Props) {
     const [selectedTeam, setSelectedTeam] = useState(Object.values(TEAMS)[0])
 
     if (!state.isActive) {

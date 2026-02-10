@@ -24,6 +24,7 @@ export type Action =
   | { type: 'SELECT_NEXT_BATSMAN'; payload: string } // Player ID
   | { type: 'AUTO_SELECT_BATSMAN' }
   | { type: 'SELECT_BOWLER'; payload: string } // Player ID
+  | { type: 'CHANGE_STRATEGY'; payload: { batting?: Strategy; bowling?: Strategy } }
   | { type: 'RESET' }
 
 export function matchReducer(state: MatchState, action: Action): MatchState {
@@ -31,6 +32,21 @@ export function matchReducer(state: MatchState, action: Action): MatchState {
   if (!inn) return state
 
   switch (action.type) {
+    case 'CHANGE_STRATEGY': {
+      const updatedInn = { ...inn }
+      if (action.payload.batting) {
+        updatedInn.battingStrategy = action.payload.batting
+        updatedInn.strikerStrategy = action.payload.batting
+        updatedInn.nonStrikerStrategy = action.payload.batting
+      }
+      if (action.payload.bowling) {
+        updatedInn.bowlingStrategy = action.payload.bowling
+      }
+      return state.currentInnings === 1
+        ? { ...state, innings1: updatedInn }
+        : { ...state, innings2: updatedInn }
+    }
+
     case 'INIT':
       return action.payload
 

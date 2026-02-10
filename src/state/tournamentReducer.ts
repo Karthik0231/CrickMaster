@@ -2,7 +2,7 @@ import { TournamentState, Team, TournamentFixture, GameMode, MatchState } from '
 import { setupNewMatch, simulateMatch } from '../engine/matchEngine'
 
 export type TournamentAction =
-    | { type: 'INIT_TOURNAMENT'; payload: { mode: GameMode; teams: Team[]; name: string; userTeamId: string | null; overs?: number } }
+    | { type: 'INIT_TOURNAMENT'; payload: { mode: GameMode; teams: Team[]; name: string; userTeamId: string | null; overs?: number; seriesMatches?: number } }
     | { type: 'SIMULATE_NEXT_MATCH' }
     | { type: 'SIMULATE_UNTIL_USER_MATCH' }
     | { type: 'SIMULATE_ALL' }
@@ -150,9 +150,15 @@ function getMatchStatsForNRR(match: MatchState) {
     }
 }
 
-function progressTournament(fixtures: TournamentFixture[], table: any[]): { updatedFixtures: TournamentFixture[], newStage: 'Group' | 'Knockout' | 'Semi Final' | 'Final' } {
+function progressTournament(fixtures: TournamentFixture[], table: any[], mode: GameMode): { updatedFixtures: TournamentFixture[], newStage: 'Group' | 'Knockout' | 'Semi Final' | 'Final' } {
     const updatedFixtures = [...fixtures];
     let newStage: 'Group' | 'Knockout' | 'Semi Final' | 'Final' = 'Group';
+
+    // Series Mode: No knockouts, just linear progression
+    if (mode === 'Series') {
+        const allCompleted = updatedFixtures.every(f => f.completed);
+        return { updatedFixtures, newStage: allCompleted ? 'Final' : 'Group' };
+    }
 
     const allGroupDone = updatedFixtures.filter(f => f.round === 'Group Stage').every(f => f.completed);
 
@@ -181,8 +187,23 @@ function progressTournament(fixtures: TournamentFixture[], table: any[]): { upda
 export function tournamentReducer(state: TournamentState | null, action: TournamentAction): TournamentState | null {
     switch (action.type) {
         case 'INIT_TOURNAMENT': {
-            const { mode, teams, name, userTeamId, overs } = action.payload
-            const fixtures = generateFixtures(teams, mode === 'IPL')
+            const { mode, teams, name, userTeamId, overs, seriesMatches } = action.payload
+            let fixtures: TournamentFixture[] = []
+
+            if (mode === 'Series' && seriesMatches && teams.length === 2) {
+                for (let i = 0; i < seriesMatches; i++) {
+                    fixtures.push({
+                        id: `series-match-${i + 1}`,
+                        homeTeamId: teams[0].id,
+                        awayTeamId: teams[1].id,
+                        round: `Match ${i + 1}`,
+                        completed: false
+                    })
+                }
+            } else {
+                fixtures = generateFixtures(teams, mode === 'IPL')
+            }
+
             const table = teams.map(t => ({
                 teamId: t.id,
                 p: 0, w: 0, l: 0, t: 0, nrr: 0, pts: 0,
@@ -255,8 +276,8 @@ export function tournamentReducer(state: TournamentState | null, action: Tournam
 
             tableUpdate.sort((a: any, b: any) => b.pts - a.pts || (b.nrr - a.nrr))
 
-            const { updatedFixtures, newStage } = progressTournament(newFixtures, tableUpdate);
-            const isFinished = updatedFixtures.every(f => f.completed) && updatedFixtures.some(f => f.round === 'Final')
+            const { updatedFixtures, newStage } = progressTournament(newFixtures, tableUpdate, state.mode);
+            const isFinished = updatedFixtures.every(f => f.completed) && (state.mode === 'Series' || updatedFixtures.some(f => f.round === 'Final'))
 
             return {
                 ...state,
@@ -308,8 +329,8 @@ export function tournamentReducer(state: TournamentState | null, action: Tournam
 
             tableUpdate.sort((a: any, b: any) => b.pts - a.pts || (b.nrr - a.nrr))
 
-            const { updatedFixtures: finalFixtures, newStage } = progressTournament(newFixtures, tableUpdate);
-            const isFinished = finalFixtures.every(f => f.completed) && finalFixtures.some(f => f.round === 'Final')
+            const { updatedFixtures: finalFixtures, newStage } = progressTournament(newFixtures, tableUpdate, state.mode);
+            const isFinished = finalFixtures.every(f => f.completed) && (state.mode === 'Series' || finalFixtures.some(f => f.round === 'Final'))
 
             return {
                 ...state,
@@ -342,7 +363,23 @@ export function tournamentReducer(state: TournamentState | null, action: Tournam
 
         case 'RESTART_TOURNAMENT': {
             if (!state) return null
-            const fixtures = generateFixtures(state.teams, state.mode === 'IPL')
+            let fixtures: TournamentFixture[] = []
+            if (state.mode === 'Series' && state.teams.length === 2) {
+                 // Regenerate series fixtures
+                 const matchCount = state.fixtures.length // Preserve original length
+                 for (let i = 0; i < matchCount; i++) {
+                    fixtures.push({
+                        id: `series-match-${i + 1}`,
+                        homeTeamId: state.teams[0].id,
+                        awayTeamId: state.teams[1].id,
+                        round: `Match ${i + 1}`,
+                        completed: false
+                    })
+                }
+            } else {
+                fixtures = generateFixtures(state.teams, state.mode === 'IPL')
+            }
+
             const table = state.teams.map(t => ({
                 teamId: t.id,
                 p: 0, w: 0, l: 0, t: 0, nrr: 0, pts: 0,
@@ -352,7 +389,9 @@ export function tournamentReducer(state: TournamentState | null, action: Tournam
                 ...state,
                 fixtures,
                 table,
-                currentRoundIndex: 0
+                currentRoundIndex: 0,
+                status: 'IN_PROGRESS',
+                stage: 'Group'
             }
         }
 

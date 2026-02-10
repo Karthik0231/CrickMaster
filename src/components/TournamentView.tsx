@@ -16,13 +16,52 @@ export function TournamentView({ state, userTeamId, onPlayMatch, onSimulateMatch
 
   const getTeam = (id: string) => state.teams.find(t => t.id === id) || { name: 'Unknown', short: 'UNK' }
 
+  let winnerText = ''
+  let winnerTeamId = ''
+
+  if (state.status === 'COMPLETED') {
+    if (state.mode === 'Series') {
+      const winner = state.table[0]
+      if (winner) {
+        winnerTeamId = winner.teamId
+        winnerText = `${getTeam(winnerTeamId).name} Wins the Series!`
+      }
+    } else {
+      const finalMatch = state.fixtures.find(f => f.round === 'Final')
+      if (finalMatch && finalMatch.winnerId) {
+        winnerTeamId = finalMatch.winnerId
+        winnerText = `${getTeam(winnerTeamId).name} are Champions!`
+      }
+    }
+  }
+
   return (
     <div className="tournament-view" style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
+      {state.status === 'COMPLETED' && (
+        <div style={{
+          background: 'linear-gradient(135deg, #FFD700 0%, #FDB931 100%)',
+          padding: '40px',
+          borderRadius: '16px',
+          marginBottom: '40px',
+          textAlign: 'center',
+          boxShadow: '0 10px 30px rgba(253, 185, 49, 0.4)',
+          color: '#333'
+        }}>
+          <h1 style={{ fontSize: '3rem', fontWeight: '900', margin: '0 0 16px 0', textTransform: 'uppercase' }}>🏆 {winnerText} 🏆</h1>
+          <p style={{ fontSize: '1.2rem', fontWeight: '700' }}>Congratulations to the winning team!</p>
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
         <button className="secondary" onClick={onBack} style={{ padding: '10px 20px', fontWeight: '700' }}>← BACK TO MENU</button>
         <div style={{ textAlign: 'right' }}>
           <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: '900', color: 'var(--primary)', letterSpacing: '-1px' }}>{state.name.toUpperCase()}</h1>
           <p style={{ margin: 0, color: 'var(--text-muted)', fontWeight: '600' }}>{state.mode} • Season 2026</p>
+          {state.mode === 'Series' && state.teams.length === 2 && (
+            <div style={{ marginTop: '8px', fontSize: '1.5rem', fontWeight: '800', color: 'var(--text)' }}>
+               Series Score: {getTeam(state.teams[0].id).short} <span style={{ color: 'var(--primary)' }}>{state.table.find(t => t.teamId === state.teams[0].id)?.w || 0}</span> - <span style={{ color: 'var(--primary)' }}>{state.table.find(t => t.teamId === state.teams[1].id)?.w || 0}</span> {getTeam(state.teams[1].id).short}
+            </div>
+          )}
         </div>
       </div>
 
