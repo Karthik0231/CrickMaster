@@ -53,7 +53,7 @@ function nextBowlerId(team: Team, totalOvers: number, over: number, innings: Inn
     
     // Role Bonus
     if (p.role === 'BOWL') score += 10
-    if (p.role === 'ALL_ROUNDER') score += 5
+    if (p.role === 'ALL') score += 5
 
     // Phase adjustments
     if (isDeath) {
