@@ -14,19 +14,19 @@ export function TeamSelector({ mode, teams, onStart, onBack }: Props) {
 
   const [homeId, setHomeId] = useState(filteredTeams[0]?.id || '')
   const [awayId, setAwayId] = useState(filteredTeams[1]?.id || '')
-  const [userTeamId, setUserTeamId] = useState(filteredTeams[0]?.id || '')
+  const [userSide, setUserSide] = useState<'home' | 'away'>('home')
   const [overs, setOvers] = useState(20)
   const [seriesMatches, setSeriesMatches] = useState(3)
 
-  // Sync userTeamId with homeId for all modes to ensure controls appear
+  // Ensure userSide is always home for WC/IPL
   React.useEffect(() => {
-    // For WC/IPL/Quick, default to Home team as User team if not set
-    if (!userTeamId || mode === 'WorldCup' || mode === 'IPL' || mode === 'Quick') {
-      setUserTeamId(homeId)
+    if (mode === 'WorldCup' || mode === 'IPL') {
+      setUserSide('home')
     }
-  }, [homeId, mode])
+  }, [mode])
 
   const getTeam = (id: string) => filteredTeams.find(t => t.id === id)
+  const userTeamId = userSide === 'home' ? homeId : awayId
 
   return (
     <div className="team-selector card">
@@ -37,7 +37,7 @@ export function TeamSelector({ mode, teams, onStart, onBack }: Props) {
           <h3>{(mode === 'WorldCup' || mode === 'IPL') ? 'Your Team' : 'Home Team'}</h3>
           <select value={homeId} onChange={(e) => setHomeId(e.target.value)}>
             {filteredTeams.map(t => (
-              <option key={t.id} value={t.id} disabled={t.id === awayId}>{t.name}</option>
+              <option key={t.id} value={t.id} disabled={(mode !== 'WorldCup' && mode !== 'IPL') && t.id === awayId}>{t.name}</option>
             ))}
           </select>
           <div className="team-preview">
@@ -75,8 +75,8 @@ export function TeamSelector({ mode, teams, onStart, onBack }: Props) {
         <div className="user-team-picker">
           <h3>Select Your Team</h3>
           <div className="side-pills">
-            <button className={userTeamId === homeId ? 'active' : ''} onClick={() => setUserTeamId(homeId)}>Home ({getTeam(homeId)?.short})</button>
-            <button className={userTeamId === awayId ? 'active' : ''} onClick={() => setUserTeamId(awayId)}>Away ({getTeam(awayId)?.short})</button>
+            <button className={userSide === 'home' ? 'active' : ''} onClick={() => setUserSide('home')}>Home ({getTeam(homeId)?.short})</button>
+            <button className={userSide === 'away' ? 'active' : ''} onClick={() => setUserSide('away')}>Away ({getTeam(awayId)?.short})</button>
           </div>
         </div>
       )}

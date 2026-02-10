@@ -230,6 +230,28 @@ export const TEAMS: Record<string, Team> = {
     ],
   },
 
+    RCB: {
+    id: 'rcb', name: 'Royal Challengers Bangalore', short: 'RCB', color: '#ec1c24',
+    battingRating: 89, bowlingRating: 84,
+    players: [
+      createPlayer('rcb1', 'Virat Kohli', 'India', 'BAT', 98, 30, 95, 35),
+      createPlayer('rcb2', 'Faf du Plessis', 'South Africa', 'BAT', 88, 10, 88, 39),
+      createPlayer('rcb3', 'Glenn Maxwell', 'Australia', 'ALL', 92, 75, 95, 35),
+      createPlayer('rcb4', 'Rajat Patidar', 'India', 'BAT', 82, 10, 78, 30),
+      createPlayer('rcb5', 'Dinesh Karthik', 'India', 'WK', 84, 10, 85, 38),
+      createPlayer('rcb6', 'Cameron Green', 'Australia', 'ALL', 82, 78, 88, 24),
+      createPlayer('rcb7', 'Wanindu Hasaranga', 'Sri Lanka', 'ALL', 72, 88, 82, 26),
+      createPlayer('rcb8', 'Harshal Patel', 'India', 'BOWL', 35, 84, 75, 33),
+      createPlayer('rcb9', 'Mohammed Siraj', 'India', 'BOWL', 15, 88, 75, 29),
+      createPlayer('rcb10', 'Josh Hazlewood', 'Australia', 'BOWL', 10, 92, 80, 33),
+      createPlayer('rcb11', 'Reece Topley', 'England', 'BOWL', 15, 84, 68, 30),
+      createPlayer('rcb12', 'Anuj Rawat', 'India', 'WK', 70, 10, 72, 24),
+      createPlayer('rcb13', 'Mahipal Lomror', 'India', 'ALL', 68, 65, 70, 24),
+      createPlayer('rcb14', 'Karn Sharma', 'India', 'BOWL', 25, 72, 68, 36),
+      createPlayer('rcb15', 'Akash Deep', 'India', 'BOWL', 18, 74, 70, 27),
+    ],
+  },
+
   MI: {
     id: 'mi', name: 'Mumbai Indians', short: 'MI', color: '#0044ff',
     battingRating: 90, bowlingRating: 88,
@@ -249,28 +271,6 @@ export const TEAMS: Record<string, Team> = {
       createPlayer('mi13', 'Nehal Wadhera', 'India', 'BAT', 72, 10, 70, 23),
       createPlayer('mi14', 'Akash Madhwal', 'India', 'BOWL', 12, 76, 68, 29),
       createPlayer('mi15', 'Arjun Tendulkar', 'India', 'ALL', 60, 68, 72, 24),
-    ],
-  },
-
-  RCB: {
-    id: 'rcb', name: 'Royal Challengers Bangalore', short: 'RCB', color: '#ec1c24',
-    battingRating: 89, bowlingRating: 84,
-    players: [
-      createPlayer('rcb1', 'Virat Kohli', 'India', 'BAT', 98, 30, 95, 35),
-      createPlayer('rcb2', 'Faf du Plessis', 'South Africa', 'BAT', 88, 10, 88, 39),
-      createPlayer('rcb3', 'Glenn Maxwell', 'Australia', 'ALL', 92, 75, 95, 35),
-      createPlayer('rcb4', 'Rajat Patidar', 'India', 'BAT', 82, 10, 78, 30),
-      createPlayer('rcb5', 'Dinesh Karthik', 'India', 'WK', 84, 10, 85, 38),
-      createPlayer('rcb6', 'Cameron Green', 'Australia', 'ALL', 82, 78, 88, 24),
-      createPlayer('rcb7', 'Wanindu Hasaranga', 'Sri Lanka', 'ALL', 72, 88, 82, 26),
-      createPlayer('rcb8', 'Harshal Patel', 'India', 'BOWL', 35, 84, 75, 33),
-      createPlayer('rcb9', 'Mohammed Siraj', 'India', 'BOWL', 15, 88, 75, 29),
-      createPlayer('rcb10', 'Josh Hazlewood', 'Australia', 'BOWL', 10, 92, 80, 33),
-      createPlayer('rcb11', 'Reece Topley', 'England', 'BOWL', 15, 84, 68, 30),
-      createPlayer('rcb12', 'Anuj Rawat', 'India', 'WK', 70, 10, 72, 24),
-      createPlayer('rcb13', 'Mahipal Lomror', 'India', 'ALL', 68, 65, 70, 24),
-      createPlayer('rcb14', 'Karn Sharma', 'India', 'BOWL', 25, 72, 68, 36),
-      createPlayer('rcb15', 'Akash Deep', 'India', 'BOWL', 18, 74, 70, 27),
     ],
   },
 

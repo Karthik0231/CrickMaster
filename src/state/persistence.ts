@@ -36,11 +36,14 @@ export function saveGameState(state: AppState) {
     try {
         const serializedState = JSON.stringify({
             currentMode: state.activeMode,
+            activeScreen: state.activeScreen,
             activeTournamentId: state.activeTournamentId,
             tournaments: state.tournaments,
             matchHistory: state.matchHistory,
             globalStats: state.globalStats,
             career: state.career,
+            auction: state.auction,
+            teams: state.teams,
             userTeamId: state.userTeamId,
             currentMatch: state.currentMatch
         });
@@ -93,11 +96,14 @@ export function loadGameState(): Partial<AppState> {
 
         return {
             activeMode: saved.currentMode,
+            activeScreen: saved.activeScreen,
             activeTournamentId: validTournamentId,
             tournaments: saved.tournaments,
             matchHistory: Array.isArray(saved.matchHistory) ? saved.matchHistory : [], // Ensure history is array
             globalStats: saved.globalStats || initialGlobalStats,
             career: saved.career,
+            auction: saved.auction,
+            teams: Array.isArray(saved.teams) ? saved.teams : undefined,
             userTeamId: saved.userTeamId,
             currentMatch: saved.currentMatch
         };

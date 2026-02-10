@@ -295,6 +295,19 @@ export default function App() {
             }
         }
 
+
+
+        // 5. IPL Mode Selector (before auction)
+        if (showIPLModeSelector && activeMode === 'IPL') {
+            return (
+                <IPLModeSelector
+                    onSelectWithAuction={handleIPLWithAuction}
+                    onSelectWithoutAuction={handleIPLWithoutAuction}
+                    onBack={handleBackToMain}
+                />
+            )
+        }
+
         // 4. Mode-Specific Routing
         if (activeMode === 'Quick') {
              if (activeScreen === 'TeamSelect' || activeScreen === 'Home') { // Default to TeamSelect for Quick Mode if not in Match
@@ -348,17 +361,6 @@ export default function App() {
                     onStartSeason={handleStartSeason}
                     onContinueSeason={handleContinueSeason}
                     activeSeasonId={activeTournamentId || undefined}
-                />
-            )
-        }
-
-        // 5. IPL Mode Selector (before auction)
-        if (showIPLModeSelector && activeMode === 'IPL') {
-            return (
-                <IPLModeSelector
-                    onSelectWithAuction={handleIPLWithAuction}
-                    onSelectWithoutAuction={handleIPLWithoutAuction}
-                    onBack={handleBackToMain}
                 />
             )
         }
