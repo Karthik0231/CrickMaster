@@ -46,7 +46,7 @@ export function Scoreboard({ state, matchDispatch, appDispatch }: ScoreboardProp
 
   const ModeSelector = ({ pid, current, isOpponent, type }: { pid: string; current: Strategy; isOpponent: boolean; type: 'batsman' | 'bowler' }) => {
     if (isOpponent) return <span className="pill" style={{ fontSize: '0.7rem', background: 'var(--bg-alt)', color: 'var(--text-muted)' }}>{current.toUpperCase()}</span>
-    if (!appDispatch) return <span className="pill" style={{ color: 'var(--primary)', background: 'var(--primary-glow)' }}>{current.toUpperCase()}</span>
+    if (!matchDispatch) return <span className="pill" style={{ color: 'var(--primary)', background: 'var(--primary-glow)' }}>{current.toUpperCase()}</span>
 
     return (
       <div className="p-mode-controls" style={{ display: 'flex', gap: '2px', background: 'var(--bg-alt)', padding: '2px', borderRadius: '6px' }}>
@@ -65,11 +65,11 @@ export function Scoreboard({ state, matchDispatch, appDispatch }: ScoreboardProp
               fontWeight: current === m ? '700' : '500'
             }}
             onClick={() => {
-              if (appDispatch) {
+              if (matchDispatch) {
                 if (type === 'batsman') {
-                  appDispatch({ type: 'CHANGE_BATSMAN_MODE', payload: { batsmanId: pid, strategy: m } })
+                  matchDispatch({ type: 'CHANGE_BATSMAN_MODE', payload: { batsmanId: pid, strategy: m } })
                 } else {
-                  appDispatch({ type: 'CHANGE_BOWLER_MODE', payload: { bowlerId: pid, strategy: m } })
+                  matchDispatch({ type: 'CHANGE_BOWLER_MODE', payload: { bowlerId: pid, strategy: m } })
                 }
               }
             }}

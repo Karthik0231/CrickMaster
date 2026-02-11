@@ -36,6 +36,9 @@ export interface Player {
   experience: number // 0-100
   fitness: number // 0-100
   form: number // -10 to +10
+  consistency: number // 0-100
+  power: number // 0-100
+  control: number // 0-100
   value: number // Auction value in Cr
   career: PlayerStats
   seasonStats?: PlayerStats
@@ -114,6 +117,7 @@ export interface InningsState {
   intentPhase: OverPhase
   batsmanSettling: Record<string, { balls: number; settled: number }> // Tracker
   bowlerOverCounts: Record<string, number>
+  overPlan: Record<number, string> // Map of over number (0-indexed) to bowler ID
 }
 
 export interface Toss {
@@ -138,6 +142,8 @@ export interface MatchState {
   awayTeam: Team
   userTeamId: string | null // Who is the human player?
   toss?: Toss
+  tossStep?: 'PICK_SIDE' | 'DECIDE' | 'COMPLETED'
+  selectionStep?: 'OPENERS' | 'NEXT_BATSMAN' | 'COMPLETED'
   innings1?: InningsState
   innings2?: InningsState
   currentInnings: 1 | 2

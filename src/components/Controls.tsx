@@ -16,11 +16,20 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
   const isUserBatting = state.userTeamId === inn.battingTeamId
 
   const handleBowlerSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    dispatch({ type: 'SELECT_BOWLER', payload: e.target.value })
+    const bowlerId = e.target.value
+    const currentOver = Math.floor(inn.balls / 6)
+    dispatch({ type: 'UPDATE_OVER_PLAN', payload: { over: currentOver, bowlerId } })
+  }
+
+  const handlePlanOver = (over: number, bowlerId: string) => {
+    dispatch({ type: 'UPDATE_OVER_PLAN', payload: { over, bowlerId } })
   }
 
   const bowlingTeam = state.homeTeam.id === inn.bowlingTeamId ? state.homeTeam : state.awayTeam
   const availableBowlers = bowlingTeam.players.filter(p => p.role !== 'BAT' && p.role !== 'WK')
+
+  const currentOver = Math.floor(inn.balls / 6)
+  const remainingOvers = Array.from({ length: Math.min(5, state.config.overs - currentOver) }, (_, i) => currentOver + i)
 
   const setStrategy = (type: 'batting' | 'bowling', val: Strategy) => {
     dispatch({ type: 'CHANGE_STRATEGY', payload: { [type]: val } })
@@ -28,11 +37,58 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
 
   return (
     <div className="controls-container card" style={{ padding: '24px', borderTop: '4px solid var(--primary)' }}>
+      {/* Bowling Plan Section */}
+      {isUserBowling && (
+        <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid var(--card-border)' }}>
+          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Bowler Planning (Next 5 Overs)
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+            {remainingOvers.map(overNum => {
+              const plannedId = inn.overPlan[overNum] || ''
+              return (
+                <div key={overNum} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: '800' }}>OVER {overNum + 1}</div>
+                  <select
+                    value={plannedId || (overNum === currentOver ? inn.currentBowlerId : '')}
+                    onChange={(e) => handlePlanOver(overNum, e.target.value)}
+                    style={{
+                      background: overNum === currentOver ? 'var(--primary-glow)' : 'var(--bg-alt)',
+                      color: 'var(--text)',
+                      border: `1px solid ${overNum === currentOver ? 'var(--primary)' : 'var(--card-border)'}`,
+                      padding: '6px',
+                      borderRadius: '6px',
+                      fontSize: '0.75rem',
+                      fontWeight: '700',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="" disabled>Select</option>
+                    {availableBowlers.map(p => {
+                      const bowled = inn.bowlerOverCounts[p.id] || 0
+                      const maxOvers = Math.ceil(state.config.overs / 5)
+                      const isMaxed = bowled >= maxOvers
+                      return (
+                        <option key={p.id} value={p.id} disabled={isMaxed}>
+                          {p.name.split(' ').pop()} ({bowled}/{maxOvers})
+                        </option>
+                      )
+                    })}
+                  </select>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Strategy Section */}
       <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid var(--card-border)' }}>
-         {isUserBatting && (
-             <div style={{ flex: 1 }}>
-                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '8px' }}>BATTING STRATEGY</label>
+         <div style={{ flex: 1 }}>
+             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                 BATTING STRATEGY {isUserBatting ? '' : '(AI CONTROLLED)'}
+             </label>
+             {isUserBatting ? (
                  <div style={{ display: 'flex', gap: '8px' }}>
                      {['Defensive', 'Normal', 'Aggressive'].map((s) => (
                          <button
@@ -54,12 +110,29 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
                          </button>
                      ))}
                  </div>
-             </div>
-         )}
+             ) : (
+                 <div className="pill" style={{ 
+                     display: 'block', 
+                     textAlign: 'center',
+                     padding: '8px', 
+                     background: 'var(--bg-alt)', 
+                     color: 'var(--text-muted)',
+                     fontSize: '0.8rem',
+                     fontWeight: '600'
+                 }}>
+                     {/* Show Granular Strategy if available, else standard */}
+                     {inn.strikerStrategy && inn.nonStrikerStrategy 
+                        ? `STRIKER: ${inn.strikerStrategy} | NON-STRIKER: ${inn.nonStrikerStrategy}` 
+                        : 'AI DECIDING...'}
+                 </div>
+             )}
+         </div>
          
-         {isUserBowling && (
-             <div style={{ flex: 1 }}>
-                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '8px' }}>BOWLING STRATEGY</label>
+         <div style={{ flex: 1 }}>
+             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                 BOWLING STRATEGY {isUserBowling ? '' : '(AI CONTROLLED)'}
+             </label>
+             {isUserBowling ? (
                  <div style={{ display: 'flex', gap: '8px' }}>
                      {['Defensive', 'Normal', 'Aggressive'].map((s) => (
                          <button
@@ -81,21 +154,23 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
                          </button>
                      ))}
                  </div>
-             </div>
-         )}
-
-         {/* AI Status if not user's turn */}
-         {!isUserBatting && !isUserBowling && (
-             <div style={{ flex: 1, opacity: 0.7 }}>
-                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '8px' }}>AI STRATEGY</label>
-                 <div style={{ fontSize: '0.9rem' }}>
-                    Batting: <strong>{inn.battingStrategy}</strong> | Bowling: <strong>{inn.bowlingStrategy}</strong>
+             ) : (
+                 <div className="pill" style={{ 
+                     display: 'block', 
+                     textAlign: 'center',
+                     padding: '8px', 
+                     background: 'var(--bg-alt)', 
+                     color: 'var(--text-muted)',
+                     fontSize: '0.8rem',
+                     fontWeight: '600'
+                 }}>
+                     {inn.bowlingStrategy ? inn.bowlingStrategy.toUpperCase() : 'AI DECIDING...'}
                  </div>
-             </div>
-         )}
+             )}
+         </div>
       </div>
 
-      <div className="match-actions" style={{ display: 'grid', gridTemplateColumns: isUserBowling ? '2fr 1fr 1fr 1fr' : '2fr 1fr 1fr', gap: '12px', alignItems: 'center' }}>
+      <div className="match-actions" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '12px', alignItems: 'center' }}>
 
         <button
           className="primary"
@@ -114,31 +189,6 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
         >
           AUTO-PLAY
         </button>
-
-        {isUserBowling && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: '800' }}>SELECT BOWLER</label>
-            <select
-              value={inn.currentBowlerId}
-              onChange={handleBowlerSelect}
-              disabled={state.matchCompleted}
-              style={{
-                background: 'var(--bg-alt)',
-                color: 'var(--text)',
-                border: '1px solid var(--card-border)',
-                padding: '8px',
-                borderRadius: '8px',
-                fontSize: '0.85rem',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              {availableBowlers.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
 
         <button
           style={{ padding: '16px', color: 'var(--danger)', background: 'transparent', border: 'none', fontSize: '0.8rem' }}

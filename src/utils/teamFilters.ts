@@ -7,6 +7,8 @@ const INTERNATIONAL_TEAM_IDS = ['ind', 'aus', 'eng', 'pak', 'nz', 'rsa', 'sl', '
 const IPL_TEAM_IDS = ['csk', 'mi', 'rcb', 'kkr', 'rr', 'srh', 'dc', 'pbks', 'gt', 'lsg']
 
 export function filterTeamsByMode(teams: Team[], mode: GameMode | null): Team[] {
+    if (!teams) return []
+
     if (!mode || mode === 'Quick' || mode === 'Series') {
         // For Quick and Series, show international teams
         return teams.filter(t => INTERNATIONAL_TEAM_IDS.includes(t.id))

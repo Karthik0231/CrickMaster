@@ -34,6 +34,15 @@ function phaseForInnings(inn: InningsState, config: MatchConfig): OverPhase {
 }
 
 function nextBowlerId(team: Team, totalOvers: number, over: number, innings: InningsState): string {
+  // Check if there is a plan for this over
+  if (innings.overPlan && innings.overPlan[over]) {
+    const plannedId = innings.overPlan[over]
+    // Basic validation: bowler shouldn't bowl consecutive overs (unless it's the only one left, which shouldn't happen)
+    if (plannedId !== innings.currentBowlerId) {
+      return plannedId
+    }
+  }
+
   const isDeath = over >= totalOvers - 5
   const isPowerplay = over < 6
   const maxOversPerBowler = Math.ceil(totalOvers / 5)
@@ -263,7 +272,8 @@ function initialInnings(batId: string, bowlId: string, batOrder: string[], bowlO
     pressure: 0,
     intentPhase: 'Powerplay',
     batsmanSettling: {},
-    bowlerOverCounts: {}
+    bowlerOverCounts: {},
+    overPlan: {}
   }
 }
 
@@ -271,88 +281,147 @@ export function setupNewMatch(params: {
   home: Team
   away: Team
   config: MatchConfig
+  userTeamId?: string | null
 }): { initState: MatchState } {
-  const tossWinner = Math.random() < 0.5 ? params.home : params.away
-  const tossLoser = tossWinner.id === params.home.id ? params.away : params.home
-  const decision: 'Bat' | 'Bowl' = Math.random() < 0.5 ? 'Bat' : 'Bowl'
-  const firstBat = decision === 'Bat' ? tossWinner : tossLoser
-  const firstBowl = decision === 'Bat' ? tossLoser : tossWinner
-
-  const innings1 = initialInnings(
-    firstBat.id,
-    firstBowl.id,
-    firstBat.players.map(p => p.id),
-    firstBowl.players.map(p => p.id)
-  )
-
-  innings1.currentBowlerId = nextBowlerId(firstBowl, params.config.overs, 0, innings1)
+  // If it's a Quick match or Series with a user, we might want a manual toss
+  const isUserInvolved = params.userTeamId !== null && params.userTeamId !== undefined
 
   const state: MatchState = {
     id: uuid(),
     config: params.config,
     homeTeam: params.home,
     awayTeam: params.away,
-    userTeamId: null,
-    toss: { winnerTeamId: tossWinner.id, decision },
-    innings1,
-    innings2: undefined,
+    userTeamId: params.userTeamId || null,
+    tossStep: isUserInvolved ? 'PICK_SIDE' : 'COMPLETED',
     currentInnings: 1,
     commentary: [],
     matchCompleted: false,
   }
+
+  // If not user involved, auto-resolve toss immediately
+  if (!isUserInvolved) {
+    const tossWinner = Math.random() < 0.5 ? params.home : params.away
+    const tossLoser = tossWinner.id === params.home.id ? params.away : params.home
+    const decision: 'Bat' | 'Bowl' = Math.random() < 0.5 ? 'Bat' : 'Bowl'
+    const firstBat = decision === 'Bat' ? tossWinner : tossLoser
+    const firstBowl = decision === 'Bat' ? tossLoser : tossWinner
+
+    const innings1 = initialInnings(
+      firstBat.id,
+      firstBowl.id,
+      firstBat.players.map(p => p.id),
+      firstBowl.players.map(p => p.id)
+    )
+    innings1.currentBowlerId = nextBowlerId(firstBowl, params.config.overs, 0, innings1)
+    
+    state.toss = { winnerTeamId: tossWinner.id, decision }
+    state.innings1 = innings1
+    state.tossStep = 'COMPLETED'
+  }
+
   return { initState: state }
 }
 
-export function getAIStrategy(inn: InningsState, config: MatchConfig, isStriker: boolean): Strategy {
-  const totalBalls = config.overs * 6 // Use config.overs directly
+export function getAIStrategy(state: MatchState, isStriker: boolean): Strategy {
+  const inn = state.currentInnings === 1 ? state.innings1! : state.innings2!
+  const config = state.config
+  const totalBalls = config.overs * 6 
   const ballsLeft = totalBalls - inn.balls
   const oversLeft = ballsLeft / 6
   const wicketsLeft = 10 - inn.wickets
 
+  // Get Player Info
+  const playerId = isStriker ? inn.strikerId : inn.nonStrikerId
+  const player = getPlayer(state, inn.battingTeamId, playerId)
+  const isTailender = player.battingRating < 50
+  const isTopOrder = inn.battingOrder.indexOf(playerId) < 3
+  
+  // Settled Status
+  const settling = inn.batsmanSettling[playerId] || { balls: 0, settled: 0 }
+  const isSettled = settling.balls > 15
+  const isWellSet = settling.balls > 30
+
+  // 1. First Innings (Setting Target)
   if (inn.target === undefined) {
-    if (inn.intentPhase === 'Powerplay' && wicketsLeft > 8) return 'Aggressive'
-    if (inn.intentPhase === 'Death' && wicketsLeft > 3) return 'Aggressive'
-    if (wicketsLeft < 3 && ballsLeft > 18) return 'Defensive'
+    // Powerplay: Top order should attack
+    if (inn.intentPhase === 'Powerplay' && isTopOrder && wicketsLeft > 8) return 'Aggressive'
+    
+    // Death Overs: Everyone attacks, especially set batsmen
+    if (inn.intentPhase === 'Death') {
+       if (wicketsLeft > 3 || isWellSet) return 'Aggressive'
+       if (isTailender && wicketsLeft < 2) return 'Aggressive' // Last wicket slog
+    }
+
+    // Middle Overs: Rotate strike (Normal), unless collapsed
+    if (wicketsLeft < 3 && ballsLeft > 30) return 'Defensive' // Save wickets
+    if (isWellSet) return 'Aggressive' // Accelerate if set
+    
     return 'Normal'
   }
 
+  // 2. Second Innings (Chasing)
   const runsNeeded = inn.target - inn.runs
   const rrr = runsNeeded / (oversLeft || 1)
   const currentRR = inn.runs / (inn.balls / 6 || 1)
 
-  // 1. Desperation / High RRR
-  if (rrr > 10) return 'Aggressive'
-
-  // 2. Ahead of the rate (Comfortable chase)
-  if (rrr < 6) {
-    // If running out of wickets, be defensive to survive
-    if (wicketsLeft < 4) return 'Defensive'
-    // Otherwise cruise
-    return 'Normal'
+  // Desperation / High RRR
+  if (rrr > 12) return 'Aggressive'
+  
+  // Tailender Logic in Chase
+  if (isTailender) {
+      if (rrr > 8) return 'Aggressive' // No choice
+      if (wicketsLeft < 2) return 'Defensive' // Try to survive for partner
+      return 'Normal'
   }
 
-  // 3. Falling behind
-  if (rrr > currentRR + 2) return 'Aggressive'
+  // Ahead of the rate (Comfortable chase)
+  if (rrr < 6) {
+    if (wicketsLeft < 4) return 'Defensive' // Don't throw it away
+    return 'Normal' // Cruise
+  }
 
-  // 4. Last pair desperation
+  // Falling behind
+  if (rrr > currentRR + 2.5) {
+      if (isSettled) return 'Aggressive' // Set batsman takes risk
+      return 'Normal' // New batsman stabilizes first
+  }
+
+  // Last pair desperation
   if (wicketsLeft < 2 && rrr > 8) return 'Aggressive'
 
-  // 5. Consolidate if lost wickets recently or just stabilizing
-  if (wicketsLeft < 4 && rrr < 8) return 'Defensive'
+  // Consolidate if lost wickets recently
+  if (wicketsLeft < 4 && rrr < 9) return 'Defensive'
 
   return 'Normal'
 }
 
-export function getAIBowlingStrategy(inn: InningsState, config: MatchConfig): Strategy {
+export function getAIBowlingStrategy(state: MatchState): Strategy {
+  const inn = state.currentInnings === 1 ? state.innings1! : state.innings2!
+  const config = state.config
   const wicketsLeft = 10 - inn.wickets
   const momentum = inn.momentum || 0
   const totalBalls = config.overs * 6
   const ballsLeft = totalBalls - inn.balls
   
+  // Opponent Analysis
+  const striker = getPlayer(state, inn.battingTeamId, inn.strikerId)
+  const isTailender = striker.battingRating < 50
+  const isDangerous = striker.battingRating > 85
+  const settling = inn.batsmanSettling[striker.id] || { balls: 0, settled: 0 }
+  const isSettled = settling.balls > 20
+
   // 1. First Innings (Restriction)
   if (inn.target === undefined) {
-    if (inn.intentPhase === 'Death') return 'Defensive' // Restrict runs at death
+    if (inn.intentPhase === 'Death') {
+        if (isTailender) return 'Aggressive' // Finish them off
+        return 'Defensive' // Restrict runs against recognized batters
+    }
     if (inn.intentPhase === 'Powerplay') return 'Aggressive' // Look for early wickets
+    
+    // Middle Overs
+    if (isTailender) return 'Aggressive' // Attack weak link
+    if (isDangerous && isSettled) return 'Defensive' // Respect the player, dry runs
+    
     if (wicketsLeft > 7 || momentum < -30) return 'Aggressive' // Wicket hunting
     return 'Normal'
   }
@@ -364,14 +433,45 @@ export function getAIBowlingStrategy(inn: InningsState, config: MatchConfig): St
   // Death Overs Defending
   if (ballsLeft <= 30) {
       if (rrr > 12) return 'Defensive' // They need a miracle, just don't bowl wides
-      if (rrr > 8) return 'Defensive' // Tight bowling
+      if (rrr > 9) return 'Defensive' // Tight bowling
       return 'Aggressive' // They are cruising, need wickets desperately
   }
+
+  // Attack tailenders always unless defending tiny total
+  if (isTailender && rrr > 4) return 'Aggressive'
 
   if (rrr < 6) return 'Aggressive' // They are cruising, attack!
   if (rrr > 10) return 'Defensive' // Pressure is on them, keep it tight
 
   return 'Normal'
+}
+
+export function initializeInningsAfterToss(state: MatchState, decision: 'Bat' | 'Bowl'): MatchState {
+  if (!state.toss) return state
+
+  const tossWinner = state.homeTeam.id === state.toss.winnerTeamId ? state.homeTeam : state.awayTeam
+  const tossLoser = state.homeTeam.id === state.toss.winnerTeamId ? state.awayTeam : state.homeTeam
+
+  const firstBat = decision === 'Bat' ? tossWinner : tossLoser
+  const firstBowl = decision === 'Bat' ? tossLoser : tossWinner
+
+  const innings1 = initialInnings(
+    firstBat.id,
+    firstBowl.id,
+    firstBat.players.map(p => p.id),
+    firstBowl.players.map(p => p.id)
+  )
+  innings1.currentBowlerId = nextBowlerId(firstBowl, state.config.overs, 0, innings1)
+
+  const isUserBatting = state.userTeamId === firstBat.id
+  
+  return {
+    ...state,
+    toss: { ...state.toss, decision },
+    innings1,
+    tossStep: 'COMPLETED',
+    selectionStep: isUserBatting ? 'OPENERS' : 'COMPLETED'
+  }
 }
 
 export function simulateBall(state: MatchState, isInteractive: boolean = true): { event: BallEvent; innings: InningsState } {
@@ -392,8 +492,8 @@ export function simulateBall(state: MatchState, isInteractive: boolean = true): 
   // This makes the AI dynamic and responsive to match situation
   if (!isUserBatting) {
     // AI re-calculates batting strategy based on current match situation
-    const newStrikerStrat = getAIStrategy(inn, state.config, true)
-    const newNonStrikerStrat = getAIStrategy(inn, state.config, false)
+    const newStrikerStrat = getAIStrategy(state, true)
+    const newNonStrikerStrat = getAIStrategy(state, false)
 
     inn.strikerStrategy = newStrikerStrat
     inn.nonStrikerStrategy = newNonStrikerStrat
@@ -401,7 +501,7 @@ export function simulateBall(state: MatchState, isInteractive: boolean = true): 
 
   if (!isUserBowling) {
     // AI re-calculates bowling strategy based on current match situation
-    inn.bowlingStrategy = getAIBowlingStrategy(inn, state.config)
+    inn.bowlingStrategy = getAIBowlingStrategy(state)
   }
 
   // Use current strategies for this ball

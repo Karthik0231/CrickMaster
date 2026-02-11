@@ -21,6 +21,9 @@ const createPlayer = (
   experience: 50 + Math.floor(Math.random() * 50),
   fitness: 90 + Math.floor(Math.random() * 10),
   form: Math.floor(Math.random() * 10) - 2,
+  consistency: 60 + Math.floor(Math.random() * 40),
+  power: 50 + Math.floor(Math.random() * 50),
+  control: 60 + Math.floor(Math.random() * 40),
   value: Math.floor(Math.random() * 15) + 0.5,
   career: {
     matches: 0, runs: 0, balls: 0, wickets: 0, ballsBowled: 0,

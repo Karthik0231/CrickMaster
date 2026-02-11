@@ -103,7 +103,7 @@ export function loadGameState(): Partial<AppState> {
             globalStats: saved.globalStats || initialGlobalStats,
             career: saved.career,
             auction: saved.auction,
-            teams: Array.isArray(saved.teams) ? saved.teams : undefined,
+            teams: Array.isArray(saved.teams) ? saved.teams : Object.values(TEAMS),
             userTeamId: saved.userTeamId,
             currentMatch: saved.currentMatch
         };
