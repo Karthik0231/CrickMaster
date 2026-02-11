@@ -13,6 +13,8 @@ export interface BallContext {
   pressure: number // 0-100
   momentum: number // -100 to +100
   settledLevel: number // 0-100
+  isUserBatting: boolean
+  isUserBowling: boolean
 }
 
 type Weights = Record<Outcome, number>
@@ -119,18 +121,30 @@ function applySettling(w: Weights, settled: number) {
 function applySkills(w: Weights, ctx: BallContext) {
   const batRating = ctx.batsman.battingRating
   const bowlRating = ctx.bowler.bowlingRating
-  // Reduced skill impact for better balance (was too strong)
-  const diff = (batRating - bowlRating) / 10 // scale of -10 to +10 usually
+  
+  // Opponent AI balancing: If User is involved, slightly lower the AI's effective skill
+  // "Opponents play smartly but slightly lower than player"
+  let effectiveBatRating = batRating
+  let effectiveBowlRating = bowlRating
 
-  // Reduced multipliers from 0.5/0.6/0.45 to 0.25/0.3/0.25 for better balance
-  w['4'] *= (1 + diff * 0.25) // 2.5% change per point of diff (was 5%)
-  w['6'] *= (1 + diff * 0.3)  // 3% change per point (was 6%)
-  w['W'] *= (1 - diff * 0.25) // 2.5% change per point (was 4.5%)
+  if (ctx.isUserBowling && !ctx.isUserBatting) {
+    // AI is batting against User
+    effectiveBatRating *= 0.96 // 4% penalty for AI batsman
+  }
+  if (ctx.isUserBatting && !ctx.isUserBowling) {
+    // AI is bowling against User
+    effectiveBowlRating *= 0.96 // 4% penalty for AI bowler
+  }
 
-  // Elite batsmen (90+) get a "Mastery" bonus (reduced from 0.85/1.15)
-  if (batRating >= 90) {
-    w['0'] *= 0.90  // Less reduction in dots (was 0.85)
-    w['1'] *= 1.10  // Less bonus to singles (was 1.15)
+  const diff = (effectiveBatRating - effectiveBowlRating) / 10 
+  
+  w['4'] *= (1 + diff * 0.25)
+  w['6'] *= (1 + diff * 0.3)
+  w['W'] *= (1 - diff * 0.25)
+
+  if (effectiveBatRating >= 90) {
+    w['0'] *= 0.90
+    w['1'] *= 1.10
   }
 }
 

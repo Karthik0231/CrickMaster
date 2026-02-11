@@ -1,4 +1,4 @@
-import { TournamentState, Team, TournamentFixture, GameMode, MatchState } from './types'
+import { TournamentState, Team, TournamentFixture, GameMode, MatchState, TournamentStats } from './types'
 import { setupNewMatch, simulateMatch } from '../engine/matchEngine'
 
 export type TournamentAction =
@@ -9,6 +9,138 @@ export type TournamentAction =
     | { type: 'RESET_TOURNAMENT' }
     | { type: 'RESTART_TOURNAMENT' }
     | { type: 'REPORT_MATCH_RESULT'; payload: { matchId: string; state: MatchState } }
+
+function updateTournamentStats(currentStats: TournamentStats | undefined, match: MatchState): TournamentStats {
+    const stats = currentStats || {
+        playerStats: {},
+        topScorers: [],
+        topWicketTakers: [],
+        mvpCandidates: []
+    }
+
+    const processInnings = (inn: any, bowlingTeam: Team, battingTeam: Team) => {
+        if (!inn) return
+        
+        const batsmenIds = new Set<string>()
+        const bowlersIds = new Set<string>()
+
+        inn.events.forEach((e: any) => {
+            // Batting stats
+            const strikerId = e.strikerId
+            batsmenIds.add(strikerId)
+            if (!stats.playerStats[strikerId]) {
+                stats.playerStats[strikerId] = {
+                    runs: 0, balls: 0, wickets: 0, ballsBowled: 0, runsConceded: 0,
+                    fours: 0, sixes: 0, notOuts: 1, matches: 0, hundreds: 0, fifties: 0, fiveWkts: 0,
+                    highestScore: 0, bestBowling: { wickets: 0, runs: 0 }
+                }
+            }
+            const p = stats.playerStats[strikerId]
+            p.runs += e.runs
+            p.balls += 1
+            if (e.runs === 4) p.fours += 1
+            if (e.runs === 6) p.sixes += 1
+            
+            // Bowling stats
+            const bowlerId = e.bowlerId
+            bowlersIds.add(bowlerId)
+            if (!stats.playerStats[bowlerId]) {
+                stats.playerStats[bowlerId] = {
+                    runs: 0, balls: 0, wickets: 0, ballsBowled: 0, runsConceded: 0,
+                    fours: 0, sixes: 0, notOuts: 1, matches: 0, hundreds: 0, fifties: 0, fiveWkts: 0,
+                    highestScore: 0, bestBowling: { wickets: 0, runs: 0 }
+                }
+            }
+            const b = stats.playerStats[bowlerId]
+            b.ballsBowled += 1
+            b.runsConceded += e.runs
+            if (e.wicket) b.wickets += 1
+        })
+
+        // Update match counts and not outs
+        batsmenIds.forEach(id => stats.playerStats[id].matches += 1)
+        bowlersIds.forEach(id => {
+            if (!batsmenIds.has(id)) stats.playerStats[id].matches += 1
+        })
+
+        // Handle wickets for not outs
+        inn.fallOfWickets.forEach((fow: any) => {
+            if (stats.playerStats[fow.batsmanId]) {
+                stats.playerStats[fow.batsmanId].notOuts = 0
+            }
+        })
+    }
+
+    const home = match.homeTeam
+    const away = match.awayTeam
+
+    processInnings(match.innings1, match.currentInnings === 1 ? away : home, match.currentInnings === 1 ? home : away)
+    processInnings(match.innings2, match.currentInnings === 2 ? away : home, match.currentInnings === 2 ? home : away)
+
+    // After processing, update top lists
+    const allPlayers: { id: string, name: string, team: string, s: any }[] = []
+    Object.entries(stats.playerStats).forEach(([id, s]) => {
+        // Find player name and team
+        let pInfo = home.players.find(p => p.id === id)
+        let teamName = home.short
+        if (!pInfo) {
+            pInfo = away.players.find(p => p.id === id)
+            teamName = away.short
+        }
+        if (pInfo) {
+            allPlayers.push({ id, name: pInfo.name, team: teamName, s })
+        }
+    })
+
+    stats.topScorers = allPlayers
+        .sort((a, b) => b.s.runs - a.s.runs)
+        .slice(0, 10)
+        .map(p => ({ id: p.id, name: p.name, team: p.team, runs: p.s.runs, matches: p.s.matches }))
+
+    stats.topWicketTakers = allPlayers
+        .sort((a, b) => b.s.wickets - a.s.wickets)
+        .slice(0, 10)
+        .map(p => ({ id: p.id, name: p.name, team: p.team, wickets: p.s.wickets, matches: p.s.matches }))
+
+    stats.topSixHitters = allPlayers
+        .sort((a, b) => b.s.sixes - a.s.sixes)
+        .slice(0, 10)
+        .map(p => ({ id: p.id, name: p.name, team: p.team, sixes: p.s.sixes }))
+
+    stats.bestEconomies = allPlayers
+        .filter(p => p.s.ballsBowled >= 12) // Minimum 2 overs
+        .map(p => ({
+            id: p.id,
+            name: p.name,
+            team: p.team,
+            economy: (p.s.runsConceded / (p.s.ballsBowled / 6))
+        }))
+        .sort((a, b) => a.economy - b.economy)
+        .slice(0, 10)
+
+    stats.bestStrikeRates = allPlayers
+        .filter(p => p.s.balls >= 20) // Minimum 20 balls faced
+        .map(p => ({
+            id: p.id,
+            name: p.name,
+            team: p.team,
+            strikeRate: (p.s.runs / p.s.balls) * 100
+        }))
+        .sort((a, b) => b.strikeRate - a.strikeRate)
+        .slice(0, 10)
+
+    stats.mvpCandidates = allPlayers
+        .map(p => ({
+            id: p.id,
+            name: p.name,
+            team: p.team,
+            points: p.s.runs + (p.s.wickets * 25) + (p.s.sixes * 2) + (p.s.fours * 1)
+        }))
+        .sort((a, b) => b.points - a.points)
+        .slice(0, 10)
+
+    return stats
+}
 
 function generateFixtures(teams: Team[], doubleRound: boolean): TournamentFixture[] {
     const fixtures: TournamentFixture[] = []
@@ -274,6 +406,8 @@ export function tournamentReducer(state: TournamentState | null, action: Tournam
             const tableUpdate = JSON.parse(JSON.stringify(state.table))
             updateTable(tableUpdate, winnerId, home.id, away.id, stats)
 
+            const updatedTournamentStats = updateTournamentStats(state.stats, matchState)
+
             tableUpdate.sort((a: any, b: any) => b.pts - a.pts || (b.nrr - a.nrr))
 
             const { updatedFixtures, newStage } = progressTournament(newFixtures, tableUpdate, state.mode);
@@ -283,6 +417,7 @@ export function tournamentReducer(state: TournamentState | null, action: Tournam
                 ...state,
                 fixtures: updatedFixtures,
                 table: tableUpdate,
+                stats: updatedTournamentStats,
                 stage: newStage,
                 status: isFinished ? 'COMPLETED' : 'IN_PROGRESS'
             }
@@ -327,6 +462,8 @@ export function tournamentReducer(state: TournamentState | null, action: Tournam
             const tableUpdate = JSON.parse(JSON.stringify(state.table))
             updateTable(tableUpdate, matchState.winnerId, home.id, away.id, stats)
 
+            const updatedTournamentStats = updateTournamentStats(state.stats, matchState)
+
             tableUpdate.sort((a: any, b: any) => b.pts - a.pts || (b.nrr - a.nrr))
 
             const { updatedFixtures: finalFixtures, newStage } = progressTournament(newFixtures, tableUpdate, state.mode);
@@ -336,6 +473,7 @@ export function tournamentReducer(state: TournamentState | null, action: Tournam
                 ...state,
                 fixtures: finalFixtures,
                 table: tableUpdate,
+                stats: updatedTournamentStats,
                 stage: newStage,
                 status: isFinished ? 'COMPLETED' : 'IN_PROGRESS'
             }

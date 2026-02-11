@@ -101,9 +101,6 @@ export function matchReducer(state: MatchState, action: Action): MatchState {
         : { ...state, innings2: updatedInn }
     }
 
-    case 'INIT':
-      return action.payload
-
     case 'RUN_OVER': {
       if (state.matchCompleted || state.waitingForBatsman) return state
       const result = simulateOver(state)

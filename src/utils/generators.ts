@@ -45,6 +45,9 @@ export function generateRandomPlayer(id: string, role: Role): Player {
         experience: Math.min(100, (age - 18) * 5 + randomInt(0, 20)),
         fitness: randomInt(70, 100),
         form: 0,
+        consistency: randomInt(60, 95),
+        power: randomInt(50, 98),
+        control: randomInt(60, 95),
         value: randomInt(20, 150) / 10, // 2.0 to 15.0 Cr
         career: {
             matches: 0, runs: 0, balls: 0, wickets: 0, ballsBowled: 0, runsConceded: 0,

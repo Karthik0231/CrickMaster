@@ -524,7 +524,9 @@ export function simulateBall(state: MatchState, isInteractive: boolean = true): 
     pitch: state.config.pitch,
     pressure: inn.pressure || 0,
     momentum: inn.momentum || 0,
-    settledLevel: strikerSettled.settled
+    settledLevel: strikerSettled.settled,
+    isUserBatting,
+    isUserBowling
   })
 
   // STRATEGY TUNING (PHASE 8)

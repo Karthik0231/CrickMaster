@@ -176,19 +176,47 @@ export interface TournamentState {
   status: 'IN_PROGRESS' | 'COMPLETED'
   stage: 'Group' | 'Knockout' | 'Semi Final' | 'Final'
   overs: number
-  table: {
-    teamId: string
-    p: number
-    w: number
-    l: number
-    t: number
-    nrr: number
-    pts: number
-    runsScored: number
-    oversFaced: number
-    runsConceded: number
-    oversBowled: number
-  }[]
+  table: TournamentTableEntry[]
+  stats?: TournamentStats
+}
+
+export interface TournamentStats {
+  playerStats: Record<string, {
+    runs: number;
+    balls: number;
+    wickets: number;
+    ballsBowled: number;
+    runsConceded: number;
+    fours: number;
+    sixes: number;
+    notOuts: number;
+    matches: number;
+    hundreds: number;
+    fifties: number;
+    fiveWkts: number;
+    highestScore: number;
+    bestBowling: { wickets: number; runs: number };
+  }>;
+  topScorers: { id: string; name: string; team: string; runs: number; matches: number }[];
+  topWicketTakers: { id: string; name: string; team: string; wickets: number; matches: number }[];
+  topSixHitters: { id: string; name: string; team: string; sixes: number }[];
+  bestEconomies: { id: string; name: string; team: string; economy: number }[];
+  bestStrikeRates: { id: string; name: string; team: string; strikeRate: number }[];
+  mvpCandidates: { id: string; name: string; team: string; points: number }[];
+}
+
+export interface TournamentTableEntry {
+  teamId: string
+  p: number
+  w: number
+  l: number
+  t: number
+  nrr: number
+  pts: number
+  runsScored: number
+  oversFaced: number
+  runsConceded: number
+  oversBowled: number
 }
 
 export interface AuctionPlayer extends Player {

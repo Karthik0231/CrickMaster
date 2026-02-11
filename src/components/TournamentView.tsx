@@ -67,7 +67,7 @@ export function TournamentView({ state, userTeamId, onPlayMatch, onSimulateMatch
 
       <div className="tournament-layout" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '32px' }}>
         <div className="standings-col">
-          <div className="card" style={{ padding: '0', overflow: 'hidden', background: 'white', boxShadow: 'var(--shadow-md)' }}>
+          <div className="card" style={{ padding: '0', overflow: 'hidden', background: 'white', boxShadow: 'var(--shadow-md)', marginBottom: '32px' }}>
             <div style={{ padding: '24px', borderBottom: '1px solid var(--card-border)', background: 'var(--bg-alt)' }}>
               <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '900', letterSpacing: '0.05em' }}>POINTS TABLE</h3>
             </div>
@@ -112,6 +112,95 @@ export function TournamentView({ state, userTeamId, onPlayMatch, onSimulateMatch
               </table>
             </div>
           </div>
+
+          {state.stats && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              {/* Top Scorers */}
+              <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+                <div style={{ padding: '16px', background: 'var(--bg-alt)', borderBottom: '1px solid var(--card-border)' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: '900' }}>ORANGE CAP (TOP SCORERS)</h4>
+                </div>
+                <div style={{ padding: '0' }}>
+                  {state.stats.topScorers.slice(0, 5).map((p, i) => (
+                    <div key={p.id} style={{ padding: '12px 16px', borderBottom: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontWeight: '800', fontSize: '0.9rem' }}>{p.name} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({p.team})</span></div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{p.matches} matches</div>
+                      </div>
+                      <div style={{ fontWeight: '900', color: '#ff9800', fontSize: '1.1rem' }}>{p.runs}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Top Wicket Takers */}
+              <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+                <div style={{ padding: '16px', background: 'var(--bg-alt)', borderBottom: '1px solid var(--card-border)' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: '900' }}>PURPLE CAP (TOP WICKETS)</h4>
+                </div>
+                <div style={{ padding: '0' }}>
+                  {state.stats.topWicketTakers.slice(0, 5).map((p, i) => (
+                    <div key={p.id} style={{ padding: '12px 16px', borderBottom: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontWeight: '800', fontSize: '0.9rem' }}>{p.name} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({p.team})</span></div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{p.matches} matches</div>
+                      </div>
+                      <div style={{ fontWeight: '900', color: '#9c27b0', fontSize: '1.1rem' }}>{p.wickets}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {state.stats && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginTop: '20px' }}>
+              {/* Most Sixes */}
+              <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+                <div style={{ padding: '12px', background: 'var(--bg-alt)', borderBottom: '1px solid var(--card-border)' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.8rem', fontWeight: '900' }}>MOST SIXES</h4>
+                </div>
+                <div>
+                  {state.stats.topSixHitters.slice(0, 3).map((p, i) => (
+                    <div key={p.id} style={{ padding: '8px 12px', borderBottom: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: '700' }}>{p.name}</span>
+                      <span style={{ fontWeight: '900', color: 'var(--primary)' }}>{p.sixes}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Best Economy */}
+              <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+                <div style={{ padding: '12px', background: 'var(--bg-alt)', borderBottom: '1px solid var(--card-border)' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.8rem', fontWeight: '900' }}>BEST ECONOMY</h4>
+                </div>
+                <div>
+                  {state.stats.bestEconomies.slice(0, 3).map((p, i) => (
+                    <div key={p.id} style={{ padding: '8px 12px', borderBottom: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: '700' }}>{p.name}</span>
+                      <span style={{ fontWeight: '900', color: 'var(--success)' }}>{p.economy.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Best Strike Rate */}
+              <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+                <div style={{ padding: '12px', background: 'var(--bg-alt)', borderBottom: '1px solid var(--card-border)' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.8rem', fontWeight: '900' }}>BEST STRIKE RATE</h4>
+                </div>
+                <div>
+                  {state.stats.bestStrikeRates.slice(0, 3).map((p, i) => (
+                    <div key={p.id} style={{ padding: '8px 12px', borderBottom: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: '700' }}>{p.name}</span>
+                      <span style={{ fontWeight: '900', color: 'var(--primary)' }}>{p.strikeRate.toFixed(1)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="fixtures-col">
