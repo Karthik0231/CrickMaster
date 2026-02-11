@@ -65,6 +65,41 @@ export function TournamentView({ state, userTeamId, onPlayMatch, onSimulateMatch
         </div>
       </div>
 
+      {state.stats && state.stats.mvpCandidates.length > 0 && (
+        <div className="card" style={{ padding: '0', overflow: 'hidden', marginBottom: '32px', border: '2px solid var(--primary-glow)', boxShadow: '0 8px 24px rgba(var(--primary-rgb), 0.15)' }}>
+          <div style={{ padding: '20px 24px', background: 'linear-gradient(90deg, var(--bg-alt) 0%, var(--primary-glow) 100%)', borderBottom: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '900', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '1.4rem' }}>✨</span> TOURNAMENT MVP RACE
+              </h4>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Based on performance points (Runs, Wickets, Boundaries)</p>
+            </div>
+            {state.stats.mvpCandidates[0] && (
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: '800' }}>CURRENT LEADER</div>
+                <div style={{ fontSize: '1rem', fontWeight: '900', color: 'var(--text)' }}>{state.stats.mvpCandidates[0].name}</div>
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1px', background: 'var(--card-border)' }}>
+            {state.stats.mvpCandidates.slice(0, 5).map((p, i) => (
+              <div key={p.id} style={{ padding: '24px 16px', background: 'white', textAlign: 'center', position: 'relative', transition: 'transform 0.2s' }}>
+                {i === 0 && (
+                  <div style={{ position: 'absolute', top: '12px', right: '12px', background: '#FFD700', color: '#000', padding: '4px 8px', borderRadius: '4px', fontSize: '0.6rem', fontWeight: '900', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                    LEADER
+                  </div>
+                )}
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '800', marginBottom: '8px' }}>RANK {i + 1}</div>
+                <div style={{ fontWeight: '900', fontSize: '1rem', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: '800', marginBottom: '16px' }}>{p.team}</div>
+                <div style={{ fontSize: '1.8rem', fontWeight: '900', color: 'var(--text)', lineHeight: '1' }}>{Math.round(p.points)}</div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: '700', marginTop: '4px' }}>POINTS</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="tournament-layout" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '32px' }}>
         <div className="standings-col">
           <div className="card" style={{ padding: '0', overflow: 'hidden', background: 'white', boxShadow: 'var(--shadow-md)', marginBottom: '32px' }}>
@@ -115,26 +150,6 @@ export function TournamentView({ state, userTeamId, onPlayMatch, onSimulateMatch
 
           {state.stats && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-              {/* MVP Candidates */}
-              <div className="card" style={{ padding: '0', overflow: 'hidden', gridColumn: 'span 2' }}>
-                <div style={{ padding: '16px', background: 'linear-gradient(90deg, var(--bg-alt) 0%, var(--primary-glow) 100%)', borderBottom: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: '900', color: 'var(--primary)' }}>✨ TOURNAMENT MVP RACE</h4>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '700' }}>BASED ON PERFORMANCE POINTS</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1px', background: 'var(--card-border)' }}>
-                  {state.stats.mvpCandidates.slice(0, 5).map((p, i) => (
-                    <div key={p.id} style={{ padding: '16px', background: 'white', textAlign: 'center', position: 'relative' }}>
-                      {i === 0 && <div style={{ position: 'absolute', top: '8px', right: '8px', fontSize: '1.2rem' }}>👑</div>}
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '800', marginBottom: '4px' }}>#{i + 1}</div>
-                      <div style={{ fontWeight: '900', fontSize: '0.9rem', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: '800', marginBottom: '8px' }}>{p.team}</div>
-                      <div style={{ fontSize: '1.2rem', fontWeight: '900', color: 'var(--text)' }}>{Math.round(p.points)}</div>
-                      <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: '700' }}>POINTS</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {/* Top Scorers */}
               <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
                 <div style={{ padding: '16px', background: 'var(--bg-alt)', borderBottom: '1px solid var(--card-border)' }}>
@@ -217,6 +232,50 @@ export function TournamentView({ state, userTeamId, onPlayMatch, onSimulateMatch
                       <span style={{ fontWeight: '900', color: 'var(--primary)' }}>{p.strikeRate.toFixed(1)}</span>
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+          )}
+          {state.stats && (
+            <div style={{ marginTop: '32px' }}>
+              <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+                <div style={{ padding: '20px 24px', background: 'var(--bg-alt)', borderBottom: '1px solid var(--card-border)' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '900', letterSpacing: '0.05em' }}>TOP PERFORMERS (ALL-ROUND)</h3>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--bg-alt)', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '700' }}>
+                        <th style={{ padding: '16px 24px' }}>Player</th>
+                        <th style={{ padding: '16px' }}>Runs</th>
+                        <th style={{ padding: '16px' }}>Balls</th>
+                        <th style={{ padding: '16px' }}>SR</th>
+                        <th style={{ padding: '16px' }}>Wkts</th>
+                        <th style={{ padding: '16px' }}>Econ</th>
+                        <th style={{ padding: '16px 24px' }}>Points</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {state.stats.mvpCandidates.slice(0, 10).map((p, idx) => {
+                        const s = state.stats!.playerStats[p.id]
+                        if (!s) return null
+                        return (
+                          <tr key={p.id} style={{ borderBottom: '1px solid var(--card-border)', transition: 'var(--transition)' }}>
+                            <td style={{ padding: '16px 24px' }}>
+                              <div style={{ fontWeight: '800' }}>{p.name}</div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: '700' }}>{p.team}</div>
+                            </td>
+                            <td style={{ padding: '16px', fontWeight: '600' }}>{s.runs}</td>
+                            <td style={{ padding: '16px', color: 'var(--text-muted)' }}>{s.balls}</td>
+                            <td style={{ padding: '16px', fontWeight: '600' }}>{s.balls > 0 ? ((s.runs / s.balls) * 100).toFixed(1) : '0.0'}</td>
+                            <td style={{ padding: '16px', fontWeight: '600', color: 'var(--success)' }}>{s.wickets}</td>
+                            <td style={{ padding: '16px', color: 'var(--text-muted)' }}>{s.ballsBowled > 0 ? (s.runsConceded / (s.ballsBowled / 6)).toFixed(2) : '0.00'}</td>
+                            <td style={{ padding: '16px 24px', fontWeight: '900', color: 'var(--primary)' }}>{Math.round(p.points)}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>

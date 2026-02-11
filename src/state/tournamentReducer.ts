@@ -10,11 +10,17 @@ export type TournamentAction =
     | { type: 'RESTART_TOURNAMENT' }
     | { type: 'REPORT_MATCH_RESULT'; payload: { matchId: string; state: MatchState } }
 
-function updateTournamentStats(currentStats: TournamentStats | undefined, match: MatchState): TournamentStats {
-    const stats = currentStats || {
+function updateTournamentStats(currentStats: TournamentStats | undefined, match: MatchState, allTeams: Team[]): TournamentStats {
+    const stats: TournamentStats = currentStats ? {
+        ...currentStats,
+        playerStats: { ...currentStats.playerStats }
+    } : {
         playerStats: {},
         topScorers: [],
         topWicketTakers: [],
+        topSixHitters: [],
+        bestEconomies: [],
+        bestStrikeRates: [],
         mvpCandidates: []
     }
 
@@ -26,7 +32,7 @@ function updateTournamentStats(currentStats: TournamentStats | undefined, match:
 
         inn.events.forEach((e: any) => {
             // Batting stats
-            const strikerId = e.strikerId
+            const strikerId = e.strikerId as string
             batsmenIds.add(strikerId)
             if (!stats.playerStats[strikerId]) {
                 stats.playerStats[strikerId] = {
@@ -42,7 +48,7 @@ function updateTournamentStats(currentStats: TournamentStats | undefined, match:
             if (e.runs === 6) p.sixes += 1
             
             // Bowling stats
-            const bowlerId = e.bowlerId
+            const bowlerId = e.bowlerId as string
             bowlersIds.add(bowlerId)
             if (!stats.playerStats[bowlerId]) {
                 stats.playerStats[bowlerId] = {
@@ -58,15 +64,18 @@ function updateTournamentStats(currentStats: TournamentStats | undefined, match:
         })
 
         // Update match counts and not outs
-        batsmenIds.forEach(id => stats.playerStats[id].matches += 1)
+        batsmenIds.forEach(id => {
+            if (stats.playerStats[id]) stats.playerStats[id].matches += 1
+        })
         bowlersIds.forEach(id => {
-            if (!batsmenIds.has(id)) stats.playerStats[id].matches += 1
+            if (stats.playerStats[id] && !batsmenIds.has(id)) stats.playerStats[id].matches += 1
         })
 
         // Handle wickets for not outs
         inn.fallOfWickets.forEach((fow: any) => {
-            if (stats.playerStats[fow.batsmanId]) {
-                stats.playerStats[fow.batsmanId].notOuts = 0
+            const bId = fow.batsmanId as string
+            if (stats.playerStats[bId]) {
+                stats.playerStats[bId].notOuts = 0
             }
         })
     }
@@ -78,7 +87,21 @@ function updateTournamentStats(currentStats: TournamentStats | undefined, match:
     processInnings(match.innings2, match.currentInnings === 2 ? away : home, match.currentInnings === 2 ? home : away)
 
     // After processing, update top lists
-    const allPlayers: { id: string, name: string, team: string, s: any }[] = []
+    const allPlayers: { id: string, name: string, team: string, s: TournamentStats['playerStats'][string] }[] = []
+    
+    // Create a lookup for existing player info from leaderboards
+    const playerInfoLookup = new Map<string, { name: string, team: string }>()
+    if (currentStats) {
+        [
+            ...currentStats.topScorers,
+            ...currentStats.topWicketTakers,
+            ...currentStats.topSixHitters,
+            ...currentStats.bestEconomies,
+            ...currentStats.bestStrikeRates,
+            ...currentStats.mvpCandidates
+        ].forEach(p => playerInfoLookup.set(p.id, { name: p.name, team: p.team }))
+    }
+
     Object.entries(stats.playerStats).forEach(([id, s]) => {
         // Find player name and team
         let pInfo = home.players.find(p => p.id === id)
@@ -87,8 +110,23 @@ function updateTournamentStats(currentStats: TournamentStats | undefined, match:
             pInfo = away.players.find(p => p.id === id)
             teamName = away.short
         }
+
         if (pInfo) {
             allPlayers.push({ id, name: pInfo.name, team: teamName, s })
+        } else {
+            const existing = playerInfoLookup.get(id)
+            if (existing) {
+                allPlayers.push({ id, name: existing.name, team: existing.team, s })
+            } else {
+                // Last resort: check all teams in tournament
+                for (const t of allTeams) {
+                    const p = t.players.find(p => p.id === id)
+                    if (p) {
+                        allPlayers.push({ id, name: p.name, team: t.short, s })
+                        break
+                    }
+                }
+            }
         }
     })
 
@@ -406,7 +444,7 @@ export function tournamentReducer(state: TournamentState | null, action: Tournam
             const tableUpdate = JSON.parse(JSON.stringify(state.table))
             updateTable(tableUpdate, winnerId, home.id, away.id, stats)
 
-            const updatedTournamentStats = updateTournamentStats(state.stats, matchState)
+            const updatedTournamentStats = updateTournamentStats(state.stats, matchState, state.teams)
 
             tableUpdate.sort((a: any, b: any) => b.pts - a.pts || (b.nrr - a.nrr))
 
@@ -462,7 +500,7 @@ export function tournamentReducer(state: TournamentState | null, action: Tournam
             const tableUpdate = JSON.parse(JSON.stringify(state.table))
             updateTable(tableUpdate, matchState.winnerId, home.id, away.id, stats)
 
-            const updatedTournamentStats = updateTournamentStats(state.stats, matchState)
+            const updatedTournamentStats = updateTournamentStats(state.stats, matchState, state.teams)
 
             tableUpdate.sort((a: any, b: any) => b.pts - a.pts || (b.nrr - a.nrr))
 
