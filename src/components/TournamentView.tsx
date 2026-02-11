@@ -114,7 +114,27 @@ export function TournamentView({ state, userTeamId, onPlayMatch, onSimulateMatch
           </div>
 
           {state.stats && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+              {/* MVP Candidates */}
+              <div className="card" style={{ padding: '0', overflow: 'hidden', gridColumn: 'span 2' }}>
+                <div style={{ padding: '16px', background: 'linear-gradient(90deg, var(--bg-alt) 0%, var(--primary-glow) 100%)', borderBottom: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: '900', color: 'var(--primary)' }}>✨ TOURNAMENT MVP RACE</h4>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '700' }}>BASED ON PERFORMANCE POINTS</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1px', background: 'var(--card-border)' }}>
+                  {state.stats.mvpCandidates.slice(0, 5).map((p, i) => (
+                    <div key={p.id} style={{ padding: '16px', background: 'white', textAlign: 'center', position: 'relative' }}>
+                      {i === 0 && <div style={{ position: 'absolute', top: '8px', right: '8px', fontSize: '1.2rem' }}>👑</div>}
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '800', marginBottom: '4px' }}>#{i + 1}</div>
+                      <div style={{ fontWeight: '900', fontSize: '0.9rem', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: '800', marginBottom: '8px' }}>{p.team}</div>
+                      <div style={{ fontSize: '1.2rem', fontWeight: '900', color: 'var(--text)' }}>{Math.round(p.points)}</div>
+                      <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: '700' }}>POINTS</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Top Scorers */}
               <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
                 <div style={{ padding: '16px', background: 'var(--bg-alt)', borderBottom: '1px solid var(--card-border)' }}>
