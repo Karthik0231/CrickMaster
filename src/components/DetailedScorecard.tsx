@@ -135,14 +135,34 @@ export function DetailedScorecard({ state }: { state: MatchState }) {
       </div>
 
       {state.matchCompleted && (
-        <div className="mom-section" style={{ marginTop: '24px', padding: '16px', background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)', borderRadius: '12px', color: 'black', textAlign: 'center', boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)' }}>
-          <h3 style={{ margin: '0 0 8px 0', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.8 }}>Man of the Match</h3>
+        <div className="awards-section" style={{ marginTop: '24px', padding: '24px', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', borderRadius: '16px', color: 'white', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', border: '1px solid #334155' }}>
           {(() => {
-             const mom = calculateManOfTheMatch(state)
-             return mom ? (
-               <div style={{ fontSize: '1.5rem', fontWeight: '900' }}>{mom.playerName}</div>
-             ) : (
-               <div>Calculating...</div>
+             const awards = calculateManOfTheMatch(state)
+             if (!awards) return <div>Calculating...</div>
+             return (
+               <>
+                 <div className="award-card" style={{ padding: '16px', background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 165, 0, 0.1) 100%)', border: '1px solid #ffd700', borderRadius: '12px', textAlign: 'center' }}>
+                   <div style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#ffd700', letterSpacing: '1px', marginBottom: '8px', fontWeight: '700' }}>Player of the Match</div>
+                   <div style={{ fontSize: '1.3rem', fontWeight: '900', color: 'white', marginBottom: '4px' }}>{awards.mom.playerName}</div>
+                   <div style={{ fontSize: '0.9rem', color: '#ffd700', fontWeight: '800' }}>₹{awards.mom.prize.toLocaleString()}</div>
+                 </div>
+
+                 {awards.superStriker && (
+                   <div className="award-card" style={{ padding: '16px', background: 'linear-gradient(135deg, rgba(255, 77, 77, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%)', border: '1px solid #ff4d4d', borderRadius: '12px', textAlign: 'center' }}>
+                     <div style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#ff4d4d', letterSpacing: '1px', marginBottom: '8px', fontWeight: '700' }}>Super Striker</div>
+                     <div style={{ fontSize: '1.3rem', fontWeight: '900', color: 'white', marginBottom: '4px' }}>{awards.superStriker.playerName}</div>
+                     <div style={{ fontSize: '0.9rem', color: '#ff4d4d', fontWeight: '800' }}>₹{awards.superStriker.prize.toLocaleString()}</div>
+                   </div>
+                 )}
+
+                 {awards.gameChanger && (
+                   <div className="award-card" style={{ padding: '16px', background: 'linear-gradient(135deg, rgba(34, 211, 238, 0.1) 0%, rgba(14, 165, 233, 0.1) 100%)', border: '1px solid #22d3ee', borderRadius: '12px', textAlign: 'center' }}>
+                     <div style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#22d3ee', letterSpacing: '1px', marginBottom: '8px', fontWeight: '700' }}>Game Changer</div>
+                     <div style={{ fontSize: '1.3rem', fontWeight: '900', color: 'white', marginBottom: '4px' }}>{awards.gameChanger.playerName}</div>
+                     <div style={{ fontSize: '0.9rem', color: '#22d3ee', fontWeight: '800' }}>₹{awards.gameChanger.prize.toLocaleString()}</div>
+                   </div>
+                 )}
+               </>
              )
           })()}
         </div>

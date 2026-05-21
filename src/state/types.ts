@@ -152,6 +152,11 @@ export interface MatchState {
   winnerId?: string
   victoryMargin?: string
   momId?: string
+  awards?: {
+    mom: { playerId: string, playerName: string, prize: number },
+    superStriker: { playerId: string, playerName: string, prize: number } | null,
+    gameChanger: { playerId: string, playerName: string, prize: number } | null,
+  }
   waitingForBatsman?: boolean // UI Control Flow
 }
 

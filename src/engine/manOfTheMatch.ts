@@ -5,13 +5,15 @@ interface MOMCandidate {
     playerName: string
     teamId: string
     runs: number
+    balls: number
     wickets: number
     economy: number
     strikeRate: number
     points: number
+    fantasyPoints: number
 }
 
-export function calculateManOfTheMatch(state: MatchState): { playerId: string; playerName: string } | null {
+export function calculateManOfTheMatch(state: MatchState) {
     if (!state.matchCompleted || !state.innings1 || !state.innings2) {
         return null
     }
@@ -34,14 +36,19 @@ export function calculateManOfTheMatch(state: MatchState): { playerId: string; p
                         playerName: player.name,
                         teamId: battingTeamId,
                         runs: 0,
+                        balls: 0,
                         wickets: 0,
                         economy: 0,
                         strikeRate: 0,
-                        points: 0
+                        points: 0,
+                        fantasyPoints: 0
                     }
                     candidates.push(candidate)
                 }
                 candidate.runs += e.runs
+                if (e.outcome !== 'Wd') {
+                    candidate.balls += 1
+                }
             }
 
             // Bowling performances
@@ -54,14 +61,16 @@ export function calculateManOfTheMatch(state: MatchState): { playerId: string; p
                         playerName: player.name,
                         teamId: bowlingTeamId,
                         runs: 0,
+                        balls: 0,
                         wickets: 0,
                         economy: 0,
                         strikeRate: 0,
-                        points: 0
+                        points: 0,
+                        fantasyPoints: 0
                     }
                     candidates.push(candidate)
                 }
-                if (e.wicket) {
+                if (e.wicket && (!e.wicketDetails || e.wicketDetails.type !== 'Run Out')) {
                     candidate.wickets++
                 }
             }
@@ -74,16 +83,24 @@ export function calculateManOfTheMatch(state: MatchState): { playerId: string; p
     // Calculate points for each candidate
     candidates.forEach(c => {
         let points = 0
+        let fantasyPoints = 0
+
+        if (c.balls > 0) {
+            c.strikeRate = (c.runs / c.balls) * 100
+        }
 
         // Batting points
-        points += c.runs * 1.5 // 1.5 points per run
-        if (c.runs >= 50) points += 20 // Bonus for 50
-        if (c.runs >= 100) points += 30 // Bonus for 100
+        points += c.runs * 1.5
+        fantasyPoints += c.runs
+        if (c.runs >= 50) { points += 20; fantasyPoints += 25; }
+        if (c.runs >= 100) { points += 30; fantasyPoints += 50; }
+        if (c.strikeRate > 150 && c.balls >= 10) fantasyPoints += 15;
 
         // Bowling points
-        points += c.wickets * 25 // 25 points per wicket
-        if (c.wickets >= 3) points += 15 // Bonus for 3+ wickets
-        if (c.wickets >= 5) points += 25 // Bonus for 5-wicket haul
+        points += c.wickets * 25
+        fantasyPoints += c.wickets * 25
+        if (c.wickets >= 3) { points += 15; fantasyPoints += 15; }
+        if (c.wickets >= 5) { points += 25; fantasyPoints += 25; }
 
         // Bonus for match-winning performance
         if (state.winnerId === c.teamId) {
@@ -91,15 +108,42 @@ export function calculateManOfTheMatch(state: MatchState): { playerId: string; p
         }
 
         c.points = points
+        c.fantasyPoints = fantasyPoints
     })
-
-    // Sort by points and return top performer
-    candidates.sort((a, b) => b.points - a.points)
 
     if (candidates.length === 0) return null
 
+    // Player of the Match
+    const momCandidates = [...candidates].sort((a, b) => b.points - a.points)
+    const mom = momCandidates[0]
+
+    // Super Striker (Min 10 balls)
+    const strikerCandidates = [...candidates].filter(c => c.balls >= 10).sort((a, b) => b.strikeRate - a.strikeRate)
+    const superStriker = strikerCandidates.length > 0 ? strikerCandidates[0] : null
+
+    // Game Changer
+    const gameChangerCandidates = [...candidates].sort((a, b) => b.fantasyPoints - a.fantasyPoints)
+    // Try to give Game Changer to someone else if possible
+    let gameChanger = gameChangerCandidates[0]
+    if (gameChanger.playerId === mom.playerId && gameChangerCandidates.length > 1) {
+        gameChanger = gameChangerCandidates[1]
+    }
+
     return {
-        playerId: candidates[0].playerId,
-        playerName: candidates[0].playerName
+        mom: {
+            playerId: mom.playerId,
+            playerName: mom.playerName,
+            prize: 100000 // ₹1 Lakh
+        },
+        superStriker: superStriker ? {
+            playerId: superStriker.playerId,
+            playerName: superStriker.playerName,
+            prize: 100000 // ₹1 Lakh
+        } : null,
+        gameChanger: {
+            playerId: gameChanger.playerId,
+            playerName: gameChanger.playerName,
+            prize: 100000 // ₹1 Lakh
+        }
     }
 }

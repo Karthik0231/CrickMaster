@@ -1,5 +1,6 @@
 import React from 'react'
 import { Strategy } from '../state/types'
+import { Shield, Scale, Zap } from 'lucide-react'
 
 interface Props {
     label: string
@@ -26,15 +27,15 @@ export function StrategySelector({ label, currentStrategy, onStrategyChange, dis
                     </button>
                 ))}
             </div>
-            <div className="strategy-info">
+            <div className="strategy-info" style={{ marginTop: '12px' }}>
                 {currentStrategy === 'Defensive' && (
-                    <small>🛡️ Defensive: Lower risk, fewer boundaries/wickets</small>
+                    <small style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}><Shield size={14} color="var(--primary)" /> Defensive: Lower risk, fewer boundaries/wickets</small>
                 )}
                 {currentStrategy === 'Normal' && (
-                    <small>⚖️ Normal: Balanced approach</small>
+                    <small style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}><Scale size={14} color="var(--primary)" /> Normal: Balanced approach</small>
                 )}
                 {currentStrategy === 'Aggressive' && (
-                    <small>⚡ Aggressive: High risk/reward, more boundaries/wickets</small>
+                    <small style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}><Zap size={14} color="var(--primary)" /> Aggressive: High risk/reward, more boundaries/wickets</small>
                 )}
             </div>
         </div>

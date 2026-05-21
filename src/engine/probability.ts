@@ -34,7 +34,7 @@ function baseWeights(): Weights {
     '3': 1,
     '4': 10,
     '6': 4,
-    'W': 3,
+    'W': 1.5,
     'Wd': 1.5,
     'Nb': 0.5,
   }
@@ -70,10 +70,10 @@ function applyPhase(w: Weights, phase: OverPhase) {
   if (phase === 'Powerplay') {
     w['4'] *= 1.30
     w['6'] *= 1.25
-    w['W'] *= 1.10
+    w['W'] *= 1.05
   } else if (phase === 'Death') {
     w['6'] *= 1.75
-    w['W'] *= 1.40
+    w['W'] *= 1.20
     w['0'] *= 0.65
   }
 }
@@ -82,11 +82,11 @@ function applyPressureAndMomentum(w: Weights, ctx: BallContext) {
   // Pressure impact: higher pressure -> more wickets for low experience
   const expFactor = ctx.batsman.experience / 100
   // Professional players (exp > 80) handle pressure 2x better
-  const pressureEffect = (ctx.pressure / 100) * (2.0 - expFactor * 1.5)
+  const pressureEffect = (ctx.pressure / 100) * (1.5 - expFactor * 1.0)
 
-  w['W'] *= (1 + Math.max(0, pressureEffect))
-  w['4'] *= (1 - Math.max(0, pressureEffect * 0.5))
-  w['6'] *= (1 - Math.max(0, pressureEffect * 0.7))
+  w['W'] *= (1 + Math.max(0, pressureEffect * 0.5))
+  w['4'] *= (1 - Math.max(0, pressureEffect * 0.3))
+  w['6'] *= (1 - Math.max(0, pressureEffect * 0.4))
 
   // MOMENTUM ENGINE (-100 to +100)
   const m = ctx.momentum / 100
@@ -108,13 +108,13 @@ function applySettling(w: Weights, settled: number) {
 
   // If not settled (initial balls is dangerous)
   if (s < 0.15) {
-    w['W'] *= (2.0 - s) // 2x risk on ball 1
-    w['4'] *= 0.5
-    w['6'] *= 0.3
+    w['W'] *= (1.5 - s) // 1.5x risk on ball 1
+    w['4'] *= 0.7
+    w['6'] *= 0.5
   } else if (s > 0.7) {
-    w['W'] *= 0.7
-    w['4'] *= (1.4 + s * 0.3)
-    w['6'] *= (1.5 + s * 0.5)
+    w['W'] *= 0.8
+    w['4'] *= (1.2 + s * 0.2)
+    w['6'] *= (1.3 + s * 0.3)
   }
 }
 

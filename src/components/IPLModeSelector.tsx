@@ -1,4 +1,5 @@
 import React from 'react'
+import { Hammer, FastForward, Lightbulb } from 'lucide-react'
 
 interface Props {
     onSelectWithAuction: () => void
@@ -59,7 +60,9 @@ export function IPLModeSelector({ onSelectWithAuction, onSelectWithoutAuction, o
                             e.currentTarget.style.transform = 'translateY(0)'
                         }}
                     >
-                        <div style={{ fontSize: '3rem' }}>🏏</div>
+                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                            <Hammer size={48} color="var(--primary)" />
+                        </div>
                         <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '900' }}>WITH AUCTION</h3>
                         <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: '1.6' }}>
                             Build your dream team through an exciting auction process. Bid on players, manage your budget, and create your perfect squad.
@@ -98,7 +101,9 @@ export function IPLModeSelector({ onSelectWithAuction, onSelectWithoutAuction, o
                             e.currentTarget.style.transform = 'translateY(0)'
                         }}
                     >
-                        <div style={{ fontSize: '3rem' }}>⚡</div>
+                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                            <FastForward size={48} color="var(--text-muted)" />
+                        </div>
                         <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '900' }}>SKIP AUCTION</h3>
                         <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: '1.6' }}>
                             Jump straight into the tournament with pre-built teams. Perfect for quick gameplay and focusing on matches.
@@ -123,8 +128,9 @@ export function IPLModeSelector({ onSelectWithAuction, onSelectWithoutAuction, o
                     borderRadius: '12px',
                     border: '1px solid var(--primary)'
                 }}>
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '600' }}>
-                        💡 <strong>Tip:</strong> You can play both modes! Each tournament is saved separately.
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Lightbulb size={16} color="var(--primary)" />
+                        <span><strong>Tip:</strong> You can play both modes! Each tournament is saved separately.</span>
                     </p>
                 </div>
             </div>

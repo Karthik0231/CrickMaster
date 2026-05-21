@@ -1,4 +1,5 @@
 import React from 'react'
+import { Trophy, Star } from 'lucide-react'
 import { TournamentState, Team, TournamentFixture } from '../state/types'
 
 interface Props {
@@ -47,7 +48,11 @@ export function TournamentView({ state, userTeamId, onPlayMatch, onSimulateMatch
           boxShadow: '0 10px 30px rgba(253, 185, 49, 0.4)',
           color: '#333'
         }}>
-          <h1 style={{ fontSize: '3rem', fontWeight: '900', margin: '0 0 16px 0', textTransform: 'uppercase' }}>🏆 {winnerText} 🏆</h1>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '16px' }}>
+            <Trophy size={48} color="var(--primary)" />
+            <h1 style={{ fontSize: '3rem', fontWeight: '900', margin: '0', textTransform: 'uppercase' }}>{winnerText}</h1>
+            <Trophy size={48} color="var(--primary)" />
+          </div>
           <p style={{ fontSize: '1.2rem', fontWeight: '700' }}>Congratulations to the winning team!</p>
         </div>
       )}
@@ -59,7 +64,7 @@ export function TournamentView({ state, userTeamId, onPlayMatch, onSimulateMatch
           <p style={{ margin: 0, color: 'var(--text-muted)', fontWeight: '600' }}>{state.mode} • Season 2026</p>
           {state.mode === 'Series' && state.teams.length === 2 && (
             <div style={{ marginTop: '8px', fontSize: '1.5rem', fontWeight: '800', color: 'var(--text)' }}>
-               Series Score: {getTeam(state.teams[0].id).short} <span style={{ color: 'var(--primary)' }}>{state.table.find(t => t.teamId === state.teams[0].id)?.w || 0}</span> - <span style={{ color: 'var(--primary)' }}>{state.table.find(t => t.teamId === state.teams[1].id)?.w || 0}</span> {getTeam(state.teams[1].id).short}
+              Series Score: {getTeam(state.teams[0].id).short} <span style={{ color: 'var(--primary)' }}>{state.table.find(t => t.teamId === state.teams[0].id)?.w || 0}</span> - <span style={{ color: 'var(--primary)' }}>{state.table.find(t => t.teamId === state.teams[1].id)?.w || 0}</span> {getTeam(state.teams[1].id).short}
             </div>
           )}
         </div>
@@ -70,7 +75,7 @@ export function TournamentView({ state, userTeamId, onPlayMatch, onSimulateMatch
           <div style={{ padding: '20px 24px', background: 'linear-gradient(90deg, var(--bg-alt) 0%, var(--primary-glow) 100%)', borderBottom: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '900', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '1.4rem' }}>✨</span> TOURNAMENT MVP RACE
+                <Star size={24} color="var(--primary)" /> TOURNAMENT MVP RACE
               </h4>
               <p style={{ margin: '4px 0 0 0', fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Based on performance points (Runs, Wickets, Boundaries)</p>
             </div>

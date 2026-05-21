@@ -2,6 +2,7 @@ import React from 'react'
 import { MatchState, Strategy } from '../state/types'
 import { calculateManOfTheMatch } from '../engine/manOfTheMatch'
 import { Action } from '../state/reducer'
+import { Trophy } from 'lucide-react'
 
 function getTeam(state: MatchState, teamId: string) {
   return state.homeTeam.id === teamId ? state.homeTeam : state.awayTeam
@@ -174,7 +175,10 @@ export function Scoreboard({ state, matchDispatch, appDispatch }: ScoreboardProp
                   {striker && (
                     <div style={{ marginBottom: '12px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '0.9rem', fontWeight: '700' }}>🏏 {striker.name}*</span>
+                        <span style={{ fontSize: '0.9rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>BAT</span>
+                          {striker.name}*
+                        </span>
                         <span style={{ fontWeight: '800', color: 'var(--primary)' }}>{getBatStats(striker.id).r}({getBatStats(striker.id).b})</span>
                       </div>
                       <ModeSelector pid={striker.id} current={inn.strikerStrategy || 'Normal'} isOpponent={!isUserBatting} type="batsman" />
@@ -195,7 +199,10 @@ export function Scoreboard({ state, matchDispatch, appDispatch }: ScoreboardProp
                   {bowler && (
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '0.9rem', fontWeight: '700' }}>⚾ {bowler.name}</span>
+                        <span style={{ fontSize: '0.9rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>BOWL</span>
+                          {bowler.name}
+                        </span>
                         <span style={{ fontWeight: '800', color: 'var(--danger)' }}>{getBowlStats(bowler.id).w}-{getBowlStats(bowler.id).r}</span>
                       </div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
@@ -226,7 +233,7 @@ export function Scoreboard({ state, matchDispatch, appDispatch }: ScoreboardProp
           </div>
           {mom && (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', padding: '10px 20px', background: 'var(--primary)', color: 'white', borderRadius: '30px', fontWeight: '800', fontSize: '0.9rem' }}>
-              🏆 PLAYER OF THE MATCH: {mom.playerName}
+              <Trophy size={16} /> PLAYER OF THE MATCH: {mom.mom.playerName}
             </div>
           )}
         </div>
