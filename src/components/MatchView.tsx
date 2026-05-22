@@ -17,13 +17,14 @@ interface Props {
 export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
   const [viewMode, setViewMode] = useState<'live' | 'scorecard'>('live')
   const inn = state.currentInnings === 1 ? state.innings1 : state.innings2
+  const isUserBatting = state.userTeamId === inn?.battingTeamId
 
   const handleBatsmanSelect = (pid: string) => {
     dispatch({ type: 'SELECT_NEXT_BATSMAN', payload: pid })
   }
 
   const renderSelectionModal = () => {
-    if (state.selectionStep !== 'OPENERS' || !inn) return null
+    if (state.selectionStep !== 'OPENERS' || !inn || !isUserBatting) return null
 
     const batTeam = state.homeTeam.id === inn.battingTeamId ? state.homeTeam : state.awayTeam
     const [selected, setSelected] = useState<string[]>([])
@@ -36,11 +37,11 @@ export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
     return (
       <div className="modal-overlay" style={{
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(16px)',
+        background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(16px)',
         zIndex: 1300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
       }}>
-        <div className="card" style={{ maxWidth: '500px', width: '100%', padding: '40px', boxShadow: 'var(--shadow-lg)' }}>
-          <h2 style={{ marginBottom: '8px', fontWeight: '900' }}>SELECT OPENERS</h2>
+        <div className="card" style={{ maxWidth: '500px', width: '100%', padding: '32px', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--primary-glow)' }}>
+          <h2 style={{ marginBottom: '8px', fontWeight: '900', color: 'var(--primary)' }}>SELECT OPENERS</h2>
           <p style={{ color: 'var(--text-muted)', marginBottom: '32px', fontWeight: '600' }}>Pick your striker and non-striker to start the innings.</p>
 
           <div style={{ display: 'grid', gap: '10px', maxHeight: '400px', overflowY: 'auto', marginBottom: '32px', padding: '4px' }}>
@@ -49,8 +50,13 @@ export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
               return (
                 <button
                   key={p.id}
-                  className={isSelected ? 'primary' : 'secondary'}
-                  style={{ justifyContent: 'space-between', padding: '16px' }}
+                  className={isSelected ? 'primary' : ''}
+                  style={{ 
+                    justifyContent: 'space-between', 
+                    padding: '16px',
+                    background: isSelected ? 'var(--primary)' : 'var(--bg-alt)',
+                    border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--card-border)'}`
+                  }}
                   onClick={() => togglePlayer(p.id)}
                 >
                   <div style={{ textAlign: 'left' }}>
@@ -65,11 +71,11 @@ export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
 
           <button
             className="primary"
-            style={{ width: '100%', padding: '20px' }}
+            style={{ width: '100%', padding: '16px' }}
             disabled={selected.length !== 2}
             onClick={() => dispatch({ type: 'SELECT_OPENERS', payload: { strikerId: selected[0], nonStrikerId: selected[1] } })}
           >
-            CONFIRM OPENERS ({selected.length}/2)
+            START INNINGS ({selected.length}/2)
           </button>
         </div>
       </div>
@@ -79,13 +85,12 @@ export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
   const renderTossModal = () => {
     if (state.tossStep === 'COMPLETED' || !state.tossStep) return null
 
-    const userTeam = state.homeTeam.id === state.userTeamId ? state.homeTeam : state.awayTeam
     const isWinner = state.toss?.winnerTeamId === state.userTeamId
 
     return (
       <div className="modal-overlay" style={{
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(16px)',
+        background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(16px)',
         zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
       }}>
         <div className="card" style={{ maxWidth: '450px', width: '100%', textAlign: 'center', padding: '40px', boxShadow: 'var(--shadow-lg)', border: '2px solid var(--primary)' }}>
@@ -127,7 +132,7 @@ export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
   }
 
   const renderBatsmanModal = () => {
-    if (!state.waitingForBatsman || !inn) return null
+    if (!state.waitingForBatsman || !inn || !isUserBatting) return null
     const batTeam = state.homeTeam.id === inn.battingTeamId ? state.homeTeam : state.awayTeam
     const outIds = inn.fallOfWickets.map(f => f.batsmanId)
     const remaining = batTeam.players.filter(p => !outIds.includes(p.id) && p.id !== inn.strikerId && p.id !== inn.nonStrikerId)
@@ -135,23 +140,21 @@ export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
     return (
       <div className="modal-overlay" style={{
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(12px)',
+        background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(16px)',
         zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
       }}>
         <div className="card" style={{ maxWidth: '400px', width: '100%', textAlign: 'center', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--primary)' }}>
           <h2 style={{ color: 'var(--danger)', marginBottom: '8px', fontWeight: '900' }}>WICKET!</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontWeight: '500' }}>Select next batsman or continue with best available</p>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontWeight: '500' }}>Select next batsman to continue the innings</p>
 
-          {/* Continue Button - Auto-select best batsman */}
           <button
             className="primary"
             style={{ width: '100%', padding: '16px', marginBottom: '16px', fontSize: '1rem', fontWeight: '700' }}
             onClick={() => dispatch({ type: 'AUTO_SELECT_BATSMAN' })}
           >
-            CONTINUE (Next in Lineup)
+            NEXT IN LINEUP
           </button>
 
-          {/* Manual Selection */}
           <div style={{ marginBottom: '12px', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
             Or Select Manually:
           </div>
@@ -159,8 +162,14 @@ export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
             {remaining.slice(0, 5).map(p => (
               <button
                 key={p.id}
-                className="secondary"
-                style={{ justifyContent: 'space-between', padding: '16px', fontWeight: '700' }}
+                className=""
+                style={{ 
+                  justifyContent: 'space-between', 
+                  padding: '16px', 
+                  fontWeight: '700',
+                  background: 'var(--bg-alt)',
+                  border: '1px solid var(--card-border)'
+                }}
                 onClick={() => handleBatsmanSelect(p.id)}
               >
                 <span>{p.name} <span style={{ fontSize: '0.7rem', opacity: 0.6, fontWeight: '500' }}>({p.role})</span></span>
@@ -178,10 +187,10 @@ export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
     return (
       <div className="modal-overlay" style={{
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(16px)',
+        background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(16px)',
         zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
       }}>
-        <div className="card" style={{ maxWidth: '600px', width: '100%', textAlign: 'center', padding: '48px', boxShadow: 'var(--shadow-lg)' }}>
+        <div className="card" style={{ maxWidth: '600px', width: '100%', textAlign: 'center', padding: '48px', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--primary)' }}>
           <h1 style={{ fontSize: '2.5rem', fontWeight: '900', color: 'var(--primary)', marginBottom: '8px' }}>MATCH FINISHED</h1>
           <p style={{ fontSize: '1.2rem', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '32px' }}>{state.victoryMargin}</p>
 
@@ -194,8 +203,7 @@ export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
               RETURN TO DASHBOARD
             </button>
             <button
-              className="secondary"
-              style={{ padding: '16px' }}
+              style={{ padding: '16px', background: 'var(--bg-alt)', color: 'var(--text)', border: '1px solid var(--card-border)' }}
               onClick={() => setViewMode('scorecard')}
             >
               VIEW DETAILED SCORECARD
@@ -207,7 +215,7 @@ export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
   }
 
   return (
-    <div className="match-view-container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
+    <div className="match-view-container" style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px 16px' }}>
       {renderTossModal()}
       {renderSelectionModal()}
       {renderBatsmanModal()}
@@ -237,7 +245,7 @@ export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
       </div>
 
       {viewMode === 'live' && inn ? (
-        <div className="match-layout" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '32px' }}>
+        <div className="match-layout grid-2" style={{ gridTemplateColumns: '1.2fr 0.8fr', gap: '32px' }}>
           <div className="main-match-col" style={{ display: 'grid', gap: '32px', alignContent: 'start' }}>
             <Scoreboard state={state} matchDispatch={dispatch} appDispatch={appDispatch} />
             <Controls state={state} dispatch={dispatch} />

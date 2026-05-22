@@ -17,34 +17,36 @@ export function StatsDashboard({ state }: Props) {
             <div className="stats-grid">
                 <section className="stats-card">
                     <h3>Team Performance (All Time)</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Team</th>
-                                <th>Matches</th>
-                                <th>Wins</th>
-                                <th>Losses</th>
-                                <th>Titles</th>
-                                <th>Win %</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sortedTeams.map(([id, stats]) => {
-                                const teamName = state.teams.find(t => t.id === id)?.name || id;
-                                const winRate = stats.matches > 0 ? (stats.wins / stats.matches * 100).toFixed(1) : '0';
-                                return (
-                                    <tr key={id}>
-                                        <td className="bold">{teamName}</td>
-                                        <td>{stats.matches}</td>
-                                        <td className="win">{stats.wins}</td>
-                                        <td className="loss">{stats.losses}</td>
-                                        <td>{stats.titles}</td>
-                                        <td>{winRate}%</td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                    <div className="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Team</th>
+                                    <th>Matches</th>
+                                    <th>Wins</th>
+                                    <th>Losses</th>
+                                    <th>Titles</th>
+                                    <th>Win %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sortedTeams.map(([id, stats]) => {
+                                    const teamName = state.teams.find(t => t.id === id)?.name || id;
+                                    const winRate = stats.matches > 0 ? (stats.wins / stats.matches * 100).toFixed(1) : '0';
+                                    return (
+                                        <tr key={id}>
+                                            <td className="bold">{teamName}</td>
+                                            <td>{stats.matches}</td>
+                                            <td className="win">{stats.wins}</td>
+                                            <td className="loss">{stats.losses}</td>
+                                            <td>{stats.titles}</td>
+                                            <td>{winRate}%</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
                 </section>
 
                 <section className="stats-card records">

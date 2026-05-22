@@ -333,28 +333,29 @@ export function getAIStrategy(state: MatchState, isStriker: boolean): Strategy {
   // Get Player Info
   const playerId = isStriker ? inn.strikerId : inn.nonStrikerId
   const player = getPlayer(state, inn.battingTeamId, playerId)
-  const isTailender = player.battingRating < 50
-  const isTopOrder = inn.battingOrder.indexOf(playerId) < 3
   
-  // Settled Status
-  const settling = inn.batsmanSettling[playerId] || { balls: 0, settled: 0 }
-  const isSettled = settling.balls > 15
-  const isWellSet = settling.balls > 30
+  // Set Status Rules
+  const faced = inn.batsmanSettling[playerId]?.balls || 0
+  const isSet = faced >= 20
+  const isNew = faced <= 7
+  const isTailender = player.battingRating < 50
+  
+  // User strategy impact
+  const userIsAggressive = state.config.bowlingStrategy === 'Aggressive'
 
   // 1. First Innings (Setting Target)
   if (inn.target === undefined) {
-    // Powerplay: Top order should attack
-    if (inn.intentPhase === 'Powerplay' && isTopOrder && wicketsLeft > 8) return 'Aggressive'
+    // Powerplay: Opener/Top order should attack gaps
+    if (inn.intentPhase === 'Powerplay' && !isTailender && wicketsLeft > 7) return 'Aggressive'
     
-    // Death Overs: Everyone attacks, especially set batsmen
+    // Death Overs: Maximize boundaries if set or wickets in hand
     if (inn.intentPhase === 'Death') {
-       if (wicketsLeft > 3 || isWellSet) return 'Aggressive'
-       if (isTailender && wicketsLeft < 2) return 'Aggressive' // Last wicket slog
+       if (wicketsLeft > 3 || isSet) return 'Aggressive'
+       if (isTailender && wicketsLeft < 2) return 'Aggressive' // Final desperation
     }
 
-    // Middle Overs: Rotate strike (Normal), unless collapsed
-    if (wicketsLeft < 3 && ballsLeft > 30) return 'Defensive' // Save wickets
-    if (isWellSet) return 'Aggressive' // Accelerate if set
+    // Collapse handling: Protect wicket
+    if (wicketsLeft < 4 && ballsLeft > 30) return 'Defensive'
     
     return 'Normal'
   }
@@ -362,35 +363,24 @@ export function getAIStrategy(state: MatchState, isStriker: boolean): Strategy {
   // 2. Second Innings (Chasing)
   const runsNeeded = inn.target - inn.runs
   const rrr = runsNeeded / (oversLeft || 1)
-  const currentRR = inn.runs / (inn.balls / 6 || 1)
+  const crr = inn.runs / (inn.balls / 6 || 1)
 
-  // Desperation / High RRR
-  if (rrr > 12) return 'Aggressive'
-  
-  // Tailender Logic in Chase
-  if (isTailender) {
-      if (rrr > 8) return 'Aggressive' // No choice
-      if (wicketsLeft < 2) return 'Defensive' // Try to survive for partner
+  // Desperation
+  if (rrr > 12 && ballsLeft < 30) return 'Aggressive'
+  if (rrr > 18) return 'Aggressive'
+
+  // Comfortable Chase: prefer singles and low risk
+  if (rrr < crr - 1 && wicketsLeft > 4) return 'Normal'
+  if (rrr < 6 && runsNeeded < 30) return 'Defensive' // Coasting
+
+  // Tight Chase
+  if (rrr > crr + 2) {
+      if (isSet || wicketsLeft > 6) return 'Aggressive'
       return 'Normal'
   }
 
-  // Ahead of the rate (Comfortable chase)
-  if (rrr < 6) {
-    if (wicketsLeft < 4) return 'Defensive' // Don't throw it away
-    return 'Normal' // Cruise
-  }
-
-  // Falling behind
-  if (rrr > currentRR + 2.5) {
-      if (isSettled) return 'Aggressive' // Set batsman takes risk
-      return 'Normal' // New batsman stabilizes first
-  }
-
   // Last pair desperation
-  if (wicketsLeft < 2 && rrr > 8) return 'Aggressive'
-
-  // Consolidate if lost wickets recently
-  if (wicketsLeft < 4 && rrr < 9) return 'Defensive'
+  if (wicketsLeft < 2 && runsNeeded > 10) return 'Aggressive'
 
   return 'Normal'
 }
@@ -398,50 +388,29 @@ export function getAIStrategy(state: MatchState, isStriker: boolean): Strategy {
 export function getAIBowlingStrategy(state: MatchState): Strategy {
   const inn = state.currentInnings === 1 ? state.innings1! : state.innings2!
   const config = state.config
-  const wicketsLeft = 10 - inn.wickets
-  const momentum = inn.momentum || 0
-  const totalBalls = config.overs * 6
-  const ballsLeft = totalBalls - inn.balls
-  
-  // Opponent Analysis
-  const striker = getPlayer(state, inn.battingTeamId, inn.strikerId)
-  const isTailender = striker.battingRating < 50
-  const isDangerous = striker.battingRating > 85
-  const settling = inn.batsmanSettling[striker.id] || { balls: 0, settled: 0 }
-  const isSettled = settling.balls > 20
-
-  // 1. First Innings (Restriction)
-  if (inn.target === undefined) {
-    if (inn.intentPhase === 'Death') {
-        if (isTailender) return 'Aggressive' // Finish them off
-        return 'Defensive' // Restrict runs against recognized batters
-    }
-    if (inn.intentPhase === 'Powerplay') return 'Aggressive' // Look for early wickets
-    
-    // Middle Overs
-    if (isTailender) return 'Aggressive' // Attack weak link
-    if (isDangerous && isSettled) return 'Defensive' // Respect the player, dry runs
-    
-    if (wicketsLeft > 7 || momentum < -30) return 'Aggressive' // Wicket hunting
-    return 'Normal'
-  }
-
-  // 2. Second Innings (Defending Target)
+  const ballsLeft = (config.overs * 6) - inn.balls
   const oversLeft = ballsLeft / 6
-  const rrr = (inn.target - inn.runs) / (oversLeft || 1)
+  const wicketsLeft = 10 - inn.wickets
 
-  // Death Overs Defending
-  if (ballsLeft <= 30) {
-      if (rrr > 12) return 'Defensive' // They need a miracle, just don't bowl wides
-      if (rrr > 9) return 'Defensive' // Tight bowling
-      return 'Aggressive' // They are cruising, need wickets desperately
+  // 1. Defending a target
+  if (inn.target !== undefined) {
+    const runsNeeded = inn.target - inn.runs
+    const rrr = runsNeeded / (oversLeft || 1)
+
+    // Attacking if wickets needed urgently
+    if (wicketsLeft > 4 && rrr < 7) return 'Aggressive'
+    
+    // Defensive if run rate is high enough to win by dots
+    if (rrr > 10 && ballsLeft < 40) return 'Defensive'
   }
 
-  // Attack tailenders always unless defending tiny total
-  if (isTailender && rrr > 4) return 'Aggressive'
+  // 2. Match Phase Logic
+  if (inn.intentPhase === 'Powerplay' && wicketsLeft > 8) return 'Aggressive'
+  if (inn.intentPhase === 'Death') return 'Defensive' // Focus on yorkers/dots
 
-  if (rrr < 6) return 'Aggressive' // They are cruising, attack!
-  if (rrr > 10) return 'Defensive' // Pressure is on them, keep it tight
+  // Pitch influence
+  if (config.pitch === 'Seaming' || config.pitch === 'Turning') return 'Aggressive'
+  if (config.pitch === 'Flat') return 'Defensive' // Restrict flow
 
   return 'Normal'
 }
@@ -480,8 +449,8 @@ export function simulateBall(state: MatchState, isInteractive: boolean = true): 
   const isUserBowling = state.userTeamId === inn.bowlingTeamId
 
   // Update Settling Tracker
-  if (!inn.batsmanSettling[inn.strikerId]) inn.batsmanSettling[inn.strikerId] = { balls: 0, settled: 0 }
-  if (!inn.batsmanSettling[inn.nonStrikerId]) inn.batsmanSettling[inn.nonStrikerId] = { balls: 0, settled: 0 }
+  if (!inn.batsmanSettling[inn.strikerId]) inn.batsmanSettling[inn.strikerId] = { balls: 0, settled: 0, dotsInARow: 0 }
+  if (!inn.batsmanSettling[inn.nonStrikerId]) inn.batsmanSettling[inn.nonStrikerId] = { balls: 0, settled: 0, dotsInARow: 0 }
 
   const strikerSettled = inn.batsmanSettling[inn.strikerId]
 
@@ -513,18 +482,31 @@ export function simulateBall(state: MatchState, isInteractive: boolean = true): 
   const batTeam = state.homeTeam.id === inn.battingTeamId ? state.homeTeam : state.awayTeam
   const bowlTeam = state.homeTeam.id === inn.bowlingTeamId ? state.homeTeam : state.awayTeam
 
+  const totalBalls = state.config.overs * 6
+  const ballsLeft = totalBalls - inn.balls
+  const oversLeft = ballsLeft / 6
+  const runsNeeded = inn.target !== undefined ? inn.target - inn.runs : undefined
+  const requiredRR = runsNeeded !== undefined ? +(runsNeeded / (oversLeft || 1)).toFixed(2) : undefined
+  const currentRR = inn.balls > 0 ? +(inn.runs / (inn.balls / 6)).toFixed(2) : 0
+
   const weights = computeWeights({
     batsman: striker,
     bowler,
     battingTeam: batTeam,
     bowlingTeam: bowlTeam,
     phase: inn.intentPhase,
+    requiredRR,
+    currentRR,
+    wicketsInHand: 10 - inn.wickets,
+    ballsLeft,
     battingStrategy: sStrat,
     bowlingStrategy: bowlStrat,
     pitch: state.config.pitch,
+    boundarySize: state.config.boundarySize || 'Normal',
     pressure: inn.pressure || 0,
     momentum: inn.momentum || 0,
-    settledLevel: strikerSettled.settled,
+    batsmanBallsFaced: strikerSettled.balls,
+    dotsInARow: strikerSettled.dotsInARow,
     isUserBatting,
     isUserBowling
   })
@@ -567,6 +549,13 @@ export function simulateBall(state: MatchState, isInteractive: boolean = true): 
     strikerSettled.balls += 1
     const settleSpeed = sStrat === 'Defensive' ? 8 : sStrat === 'Aggressive' ? 2 : 5
     strikerSettled.settled = Math.min(100, strikerSettled.settled + settleSpeed)
+    
+    // Update dotsInARow
+    if (out === '0') {
+      strikerSettled.dotsInARow += 1
+    } else {
+      strikerSettled.dotsInARow = 0
+    }
   }
 
   event.text = commentaryFor(event, striker, bowler)

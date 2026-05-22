@@ -55,19 +55,22 @@ export default function App() {
         setShowIPLModeSelector(false); // Reset IPL selector
     }
 
-    const handleStartMatchSetup = (homeId: string, awayId: string, overs: number, seriesMatches?: number, userTeamId?: string, matchId?: string) => {
+    const handleStartMatchSetup = (homeId: string, awayId: string, overs: number, seriesMatches?: number, userTeamId?: string, configOverride?: any) => {
         // userTeamId is critical for WC and IPL
         if (userTeamId) {
             dispatch({ type: 'SET_USER_TEAM', payload: userTeamId });
         }
+        const { matchId, ...restConfig } = configOverride || {};
         const config: MatchConfig = {
             overs,
             mode: appState.activeMode || 'Quick',
-            format: overs === 20 ? 'T20' : 'ODI',
+            format: overs === 20 ? 'T20' : (overs === 50 ? 'ODI' : 'T20'),
             strategy: 'Normal',
             bowlingStrategy: 'Normal',
             pitch: 'Balanced',
-            stadium: 'Generic Stadium'
+            boundarySize: 'Normal',
+            stadium: 'Generic Stadium',
+            ...restConfig
         }
 
         // Only INIT tournament if we are NOT already in one
@@ -109,8 +112,8 @@ export default function App() {
     }
 
     const handleStartFinalMatch = (home: Team, away: Team, config: MatchConfig, matchId?: string) => {
-        const { initState } = setupNewMatch({ home, away, config })
-        const stateWithUser = { ...initState, userTeamId: appState.userTeamId, id: matchId || `${config.mode}_${Date.now()}` }
+        const { initState } = setupNewMatch({ home, away, config, userTeamId: appState.userTeamId })
+        const stateWithUser = { ...initState, id: matchId || `${config.mode}_${Date.now()}` }
         dispatch({ type: 'START_MATCH', payload: stateWithUser });
         setTentativeMatch(null)
         setShowLineup(false)
@@ -337,7 +340,7 @@ export default function App() {
                             20,
                             undefined,
                             userTeamId || undefined,
-                            id
+                            { matchId: id } as any
                         )}
                         onSimulateMatch={() => dispatch({ type: 'UPDATE_TOURNAMENT', payload: tournamentReducer(tournament, { type: 'SIMULATE_NEXT_MATCH' })! })}
                         onSimulateToUserMatch={() => dispatch({ type: 'UPDATE_TOURNAMENT', payload: tournamentReducer(tournament, { type: 'SIMULATE_UNTIL_USER_MATCH' })! })}

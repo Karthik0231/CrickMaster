@@ -9,28 +9,50 @@ const createPlayer = (
   bowl: number,
   field: number,
   age?: number
-): Player => ({
-  id,
-  name,
-  country,
-  role,
-  age: age || (25 + Math.floor(Math.random() * 10)),
-  battingRating: bat,
-  bowlingRating: bowl,
-  fieldingRating: field,
-  experience: 50 + Math.floor(Math.random() * 50),
-  fitness: 90 + Math.floor(Math.random() * 10),
-  form: Math.floor(Math.random() * 10) - 2,
-  consistency: 60 + Math.floor(Math.random() * 40),
-  power: 50 + Math.floor(Math.random() * 50),
-  control: 60 + Math.floor(Math.random() * 40),
-  value: Math.floor(Math.random() * 15) + 0.5,
-  career: {
-    matches: 0, runs: 0, balls: 0, wickets: 0, ballsBowled: 0,
-    runsConceded: 0, fours: 0, sixes: 0, outs: 0, catches: 0,
-    stumpings: 0, fifties: 0, hundreds: 0, fiveWickets: 0,
-  },
-})
+): Player => {
+  const isSubContinent = ['India', 'Pakistan', 'Sri Lanka', 'Bangladesh', 'Afghanistan'].includes(country)
+  
+  // Base attributes
+  const power = role === 'BAT' ? bat + 5 : (role === 'ALL' ? bat : bat - 15)
+  const control = role === 'BOWL' ? bowl + 5 : (role === 'ALL' ? bowl : bowl - 15)
+  const timing = role === 'BAT' ? bat + 5 : (role === 'ALL' ? bat - 5 : bat - 20)
+  
+  return {
+    id,
+    name,
+    country,
+    role,
+    age: age || (20 + Math.floor(Math.random() * 15)),
+    battingRating: bat,
+    bowlingRating: bowl,
+    fieldingRating: field,
+    experience: 30 + Math.floor(Math.random() * 60),
+    fitness: 85 + Math.floor(Math.random() * 15),
+    form: Math.floor(Math.random() * 10) - 2,
+    consistency: 60 + Math.floor(Math.random() * 30),
+    
+    // Detailed Attributes
+    power: Math.min(100, Math.max(20, power + (Math.random() * 20 - 10))),
+    control: Math.min(100, Math.max(20, control + (Math.random() * 20 - 10))),
+    timing: Math.min(100, Math.max(20, timing + (Math.random() * 20 - 10))),
+    temperament: 40 + Math.floor(Math.random() * 50),
+    strikeRotation: 50 + Math.floor(Math.random() * 40),
+    spinPlay: (isSubContinent ? 70 : 50) + Math.floor(Math.random() * 30),
+    pacePlay: (isSubContinent ? 50 : 70) + Math.floor(Math.random() * 30),
+    
+    yorkerSkill: role === 'BOWL' ? 40 + Math.floor(Math.random() * 50) : 10 + Math.floor(Math.random() * 30),
+    variationSkill: role === 'BOWL' || role === 'ALL' ? 50 + Math.floor(Math.random() * 40) : 10 + Math.floor(Math.random() * 30),
+    bouncerSkill: role === 'BOWL' ? 40 + Math.floor(Math.random() * 50) : 5 + Math.floor(Math.random() * 20),
+    pressureHandling: 40 + Math.floor(Math.random() * 50),
+    
+    value: Math.floor(Math.random() * 15) + 0.5,
+    career: {
+      matches: 0, runs: 0, balls: 0, wickets: 0, ballsBowled: 0,
+      runsConceded: 0, fours: 0, sixes: 0, outs: 0, catches: 0,
+      stumpings: 0, fifties: 0, hundreds: 0, fiveWickets: 0,
+    },
+  }
+}
 
 export const TEAMS: Record<string, Team> = {
   // ========== INTERNATIONAL TEAMS ==========
@@ -428,6 +450,50 @@ export const TEAMS: Record<string, Team> = {
       createPlayer('lsg13', 'Devdutt Padikkal', 'India', 'BAT', 78, 10, 75, 24),
       createPlayer('lsg14', 'Matt Henry', 'New Zealand', 'BOWL', 25, 82, 70, 32),
       createPlayer('lsg15', 'Amit Mishra', 'India', 'BOWL', 30, 76, 60, 41),
+    ],
+  },
+
+  WestIndies: {
+    id: 'wi', name: 'West Indies', short: 'WI', color: '#7b0031',
+    battingRating: 84, bowlingRating: 85,
+    players: [
+      createPlayer('wi1', 'Brandon King', 'West Indies', 'BAT', 82, 10, 78, 29),
+      createPlayer('wi2', 'Johnson Charles', 'West Indies', 'WK', 80, 10, 75, 35),
+      createPlayer('wi3', 'Nicholas Pooran', 'West Indies', 'WK', 94, 10, 82, 28),
+      createPlayer('wi4', 'Rovman Powell', 'West Indies', 'BAT', 86, 15, 85, 30),
+      createPlayer('wi5', 'Sherfane Rutherford', 'West Indies', 'BAT', 80, 10, 80, 25),
+      createPlayer('wi6', 'Andre Russell', 'West Indies', 'ALL', 92, 85, 88, 36),
+      createPlayer('wi7', 'Jason Holder', 'West Indies', 'ALL', 75, 82, 80, 32),
+      createPlayer('wi8', 'Romario Shepherd', 'West Indies', 'ALL', 78, 80, 75, 29),
+      createPlayer('wi9', 'Akeal Hosein', 'West Indies', 'BOWL', 45, 88, 85, 30),
+      createPlayer('wi10', 'Alzarri Joseph', 'West Indies', 'BOWL', 30, 86, 78, 27),
+      createPlayer('wi11', 'Gudakesh Motie', 'West Indies', 'BOWL', 20, 84, 75, 28),
+      createPlayer('wi12', 'Shai Hope', 'West Indies', 'WK', 85, 10, 88, 30),
+      createPlayer('wi13', 'Kyle Mayers', 'West Indies', 'ALL', 82, 75, 78, 31),
+      createPlayer('wi14', 'Roston Chase', 'West Indies', 'ALL', 72, 78, 85, 31),
+      createPlayer('wi15', 'Obed McCoy', 'West Indies', 'BOWL', 15, 82, 70, 26),
+    ],
+  },
+
+  Afghanistan: {
+    id: 'afg', name: 'Afghanistan', short: 'AFG', color: '#00589b',
+    battingRating: 82, bowlingRating: 90,
+    players: [
+      createPlayer('afg1', 'Rahmanullah Gurbaz', 'Afghanistan', 'WK', 88, 10, 80, 22),
+      createPlayer('afg2', 'Ibrahim Zadran', 'Afghanistan', 'BAT', 86, 10, 82, 22),
+      createPlayer('afg3', 'Gulbadin Naib', 'Afghanistan', 'ALL', 80, 75, 85, 32),
+      createPlayer('afg4', 'Azmatullah Omarzai', 'Afghanistan', 'ALL', 82, 82, 80, 24),
+      createPlayer('afg5', 'Mohammad Nabi', 'Afghanistan', 'ALL', 78, 82, 85, 39),
+      createPlayer('afg6', 'Najibullah Zadran', 'Afghanistan', 'BAT', 82, 10, 78, 31),
+      createPlayer('afg7', 'Karim Janat', 'Afghanistan', 'ALL', 75, 75, 75, 25),
+      createPlayer('afg8', 'Rashid Khan', 'Afghanistan', 'ALL', 72, 98, 95, 25),
+      createPlayer('afg9', 'Noor Ahmad', 'Afghanistan', 'BOWL', 20, 88, 75, 19),
+      createPlayer('afg10', 'Naveen-ul-Haq', 'Afghanistan', 'BOWL', 25, 86, 80, 24),
+      createPlayer('afg11', 'Fazalhaq Farooqi', 'Afghanistan', 'BOWL', 15, 90, 72, 23),
+      createPlayer('afg12', 'Mujeeb Ur Rahman', 'Afghanistan', 'BOWL', 35, 88, 70, 23),
+      createPlayer('afg13', 'Hazratullah Zazai', 'Afghanistan', 'BAT', 84, 10, 70, 26),
+      createPlayer('afg14', 'Fareed Ahmad', 'Afghanistan', 'BOWL', 15, 80, 68, 29),
+      createPlayer('afg15', 'Nangyalai Kharoti', 'Afghanistan', 'BOWL', 25, 78, 72, 20),
     ],
   },
 }

@@ -13,6 +13,7 @@ export const initialMatchState: MatchState = setupNewMatch({
     strategy: 'Normal',
     bowlingStrategy: 'Normal',
     pitch: 'Balanced',
+    boundarySize: 'Normal',
     stadium: 'Generic Stadium'
   }
 }).initState

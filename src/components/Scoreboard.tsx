@@ -169,7 +169,7 @@ export function Scoreboard({ state, matchDispatch, appDispatch }: ScoreboardProp
             }
 
             return (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="grid-2" style={{ gap: '16px' }}>
                 <div className="card" style={{ padding: '16px', background: 'var(--bg-alt)', borderRadius: '12px' }}>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', fontWeight: '700' }}>BATTING</div>
                   {striker && (

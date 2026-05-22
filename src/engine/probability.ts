@@ -1,4 +1,4 @@
-import { Outcome, OverPhase, Player, Team, Strategy, PitchType } from '../state/types'
+import { Outcome, OverPhase, Player, Team, Strategy, PitchType, ShotIntent, DeliveryPlan, ExecutionQuality, BoundarySize } from '../state/types'
 
 export interface BallContext {
   batsman: Player
@@ -7,12 +7,17 @@ export interface BallContext {
   bowlingTeam: Team
   phase: OverPhase
   requiredRR?: number
+  currentRR: number
+  wicketsInHand: number
+  ballsLeft: number
   battingStrategy: Strategy
   bowlingStrategy: Strategy
   pitch: PitchType
+  boundarySize: BoundarySize
   pressure: number // 0-100
   momentum: number // -100 to +100
-  settledLevel: number // 0-100
+  batsmanBallsFaced: number
+  dotsInARow: number
   isUserBatting: boolean
   isUserBowling: boolean
 }
@@ -40,138 +45,199 @@ function baseWeights(): Weights {
   }
 }
 
-function applyStrategy(w: Weights, ctx: BallContext) {
-  // BATTING STRATEGY (Per-batsman)
-  if (ctx.battingStrategy === 'Defensive') {
-    w['4'] *= 0.60
-    w['6'] *= 0.50
-    w['W'] *= 0.65
-    w['0'] *= 1.20
-  } else if (ctx.battingStrategy === 'Aggressive') {
-    w['4'] *= 1.45
-    w['6'] *= 1.60
-    w['W'] *= 1.35
-    w['0'] *= 0.75
+// --- STEP 1: BOWLER CHOOSES DELIVERY PLAN ---
+function chooseDeliveryPlan(ctx: BallContext): DeliveryPlan {
+  const { bowler, phase, bowlingStrategy, pitch, pressure } = ctx
+  const isSpinner = bowler.name.toLowerCase().includes('spin') || bowler.role === 'ALL'
+  
+  const rand = Math.random() * 100
+  
+  if (phase === 'Death') {
+    if (bowlingStrategy === 'Aggressive') {
+      if (rand < 40) return 'Yorker'
+      if (rand < 60) return 'WideYorker'
+      if (rand < 80) return 'Bouncer'
+      return 'Slower'
+    } else {
+      if (rand < 50) return 'WideYorker'
+      if (rand < 80) return 'Yorker'
+      return 'Slower'
+    }
   }
 
-  // BOWLING STRATEGY
-  if (ctx.bowlingStrategy === 'Defensive') {
-    w['4'] *= 0.75
-    w['6'] *= 0.75
-    w['W'] *= 0.80
-  } else if (ctx.bowlingStrategy === 'Aggressive') {
-    w['W'] *= 1.25
-    w['4'] *= 1.10
-    w['6'] *= 1.15
-  }
-}
-
-function applyPhase(w: Weights, phase: OverPhase) {
   if (phase === 'Powerplay') {
-    w['4'] *= 1.30
-    w['6'] *= 1.25
-    w['W'] *= 1.05
-  } else if (phase === 'Death') {
-    w['6'] *= 1.75
-    w['W'] *= 1.20
-    w['0'] *= 0.65
+    if (bowlingStrategy === 'Aggressive') {
+      if (rand < 60) return 'FullAttacking'
+      if (rand < 90) return 'GoodLength'
+      return 'Bouncer'
+    }
+    return 'GoodLength'
   }
+
+  // Middle Overs
+  if (isSpinner) {
+    if (bowlingStrategy === 'Aggressive') return rand < 70 ? 'SpinAttacking' : 'SpinDefensive'
+    return rand < 70 ? 'SpinDefensive' : 'SpinAttacking'
+  }
+
+  if (bowlingStrategy === 'Defensive') return 'BackOfLength'
+  return 'GoodLength'
 }
 
-function applyPressureAndMomentum(w: Weights, ctx: BallContext) {
-  // Pressure impact: higher pressure -> more wickets for low experience
-  const expFactor = ctx.batsman.experience / 100
-  // Professional players (exp > 80) handle pressure 2x better
-  const pressureEffect = (ctx.pressure / 100) * (1.5 - expFactor * 1.0)
-
-  w['W'] *= (1 + Math.max(0, pressureEffect * 0.5))
-  w['4'] *= (1 - Math.max(0, pressureEffect * 0.3))
-  w['6'] *= (1 - Math.max(0, pressureEffect * 0.4))
-
-  // MOMENTUM ENGINE (-100 to +100)
-  const m = ctx.momentum / 100
-  if (m > 0) { // Batting team has momentum
-    w['4'] *= (1 + m * 0.6)
-    w['6'] *= (1 + m * 0.8)
-    w['W'] *= (1 - m * 0.4)
-    w['1'] *= (1 + m * 0.2) // Better strike rotation
-  } else if (m < 0) { // Bowling momentum
-    const am = Math.abs(m)
-    w['W'] *= (1 + am * 0.8)
-    w['0'] *= (1 + am * 0.3)
-    w['4'] *= (1 - am * 0.5)
-  }
-}
-
-function applySettling(w: Weights, settled: number) {
-  const s = settled / 100
-
-  // If not settled (initial balls is dangerous)
-  if (s < 0.15) {
-    w['W'] *= (1.5 - s) // 1.5x risk on ball 1
-    w['4'] *= 0.7
-    w['6'] *= 0.5
-  } else if (s > 0.7) {
-    w['W'] *= 0.8
-    w['4'] *= (1.2 + s * 0.2)
-    w['6'] *= (1.3 + s * 0.3)
-  }
-}
-
-function applySkills(w: Weights, ctx: BallContext) {
-  const batRating = ctx.batsman.battingRating
-  const bowlRating = ctx.bowler.bowlingRating
+// --- STEP 2: BATTER CHOOSES SHOT INTENT ---
+function chooseShotIntent(ctx: BallContext, delivery: DeliveryPlan): ShotIntent {
+  const { batsman, battingStrategy, phase, requiredRR, wicketsInHand, batsmanBallsFaced, pressure } = ctx
+  const isSet = batsmanBallsFaced >= 20
+  const isNew = batsmanBallsFaced <= 7
   
-  // Opponent AI balancing: If User is involved, slightly lower the AI's effective skill
-  // "Opponents play smartly but slightly lower than player"
-  let effectiveBatRating = batRating
-  let effectiveBowlRating = bowlRating
+  const rand = Math.random() * 100
 
-  if (ctx.isUserBowling && !ctx.isUserBatting) {
-    // AI is batting against User
-    effectiveBatRating *= 0.96 // 4% penalty for AI batsman
-  }
-  if (ctx.isUserBatting && !ctx.isUserBowling) {
-    // AI is bowling against User
-    effectiveBowlRating *= 0.96 // 4% penalty for AI bowler
+  // Desperation logic
+  if (requiredRR && requiredRR > 15 && ctx.ballsLeft < 18) return 'Desperation'
+  if (battingStrategy === 'Aggressive' && phase === 'Death') return 'Slog'
+
+  if (battingStrategy === 'Defensive') {
+    if (isNew || pressure > 70) return 'Defend'
+    return rand < 60 ? 'Single' : 'Gap'
   }
 
-  const diff = (effectiveBatRating - effectiveBowlRating) / 10 
+  if (battingStrategy === 'Aggressive') {
+    if (isSet || phase === 'Powerplay') return rand < 60 ? 'Lofted' : 'Slog'
+    return rand < 50 ? 'ControlledBoundary' : 'Lofted'
+  }
+
+  // Normal / Balanced
+  if (isNew) return rand < 70 ? 'Defend' : 'Single'
+  if (isSet) return rand < 40 ? 'Gap' : (rand < 80 ? 'ControlledBoundary' : 'Lofted')
   
-  w['4'] *= (1 + diff * 0.25)
-  w['6'] *= (1 + diff * 0.3)
-  w['W'] *= (1 - diff * 0.25)
-
-  if (effectiveBatRating >= 90) {
-    w['0'] *= 0.90
-    w['1'] *= 1.10
-  }
+  return rand < 50 ? 'Single' : 'Gap'
 }
 
-function applyPitch(w: Weights, pitch: PitchType) {
-  if (pitch === 'Batting') {
-    w['4'] *= 1.20
-    w['W'] *= 0.80
-  } else if (pitch === 'Bowling') {
-    w['W'] *= 1.30
-    w['4'] *= 0.80
-  }
+// --- STEP 3: EXECUTION QUALITY ---
+function evaluateExecution(skill: number, intent: string, pressure: number): ExecutionQuality {
+  let score = skill + (Math.random() * 40 - 20) - (pressure / 4)
+  if (score > 85) return 'Perfect'
+  if (score > 65) return 'Good'
+  if (score > 40) return 'Average'
+  return 'Poor'
 }
 
 export function computeWeights(ctx: BallContext): Weights {
+  const { batsman, bowler, pitch, pressure, batsmanBallsFaced, dotsInARow } = ctx
   const w = baseWeights()
+  
+  // 1. Choose Delivery & Shot
+  const delivery = chooseDeliveryPlan(ctx)
+  const shot = chooseShotIntent(ctx, delivery)
+  
+  // 2. Evaluate Execution
+  const bowlerExec = evaluateExecution(bowler.bowlingRating, delivery, pressure)
+  const batterExec = evaluateExecution(batsman.battingRating, shot, pressure)
+  
+  // 3. Apply Modifiers based on Matchup
+  
+  // Dot Ball Pressure Logic: After 3 dots, batsman becomes restless (Higher Aggression/Risk)
+  if (dotsInARow >= 3) {
+    w['4'] *= 1.5
+    w['6'] *= 1.8
+    w['W'] *= 1.4 // Higher risk of throwing it away
+    w['0'] *= 0.7
+  }
 
-  applyStrategy(w, ctx)
-  applyPhase(w, ctx.phase)
-  applySettling(w, ctx.settledLevel)
-  applyPressureAndMomentum(w, ctx)
-  applySkills(w, ctx)
-  applyPitch(w, ctx.pitch)
+  // Set Status Rules
+  if (batsmanBallsFaced <= 7) { // New
+    w['W'] *= 1.8
+    w['0'] *= 1.4
+    w['4'] *= 0.6
+    w['6'] *= 0.4
+  } else if (batsmanBallsFaced >= 20) { // Set
+    w['W'] *= 0.6
+    w['0'] *= 0.7
+    w['4'] *= 1.4
+    w['6'] *= 1.5
+    w['1'] *= 1.2 // Better rotation
+  }
+
+  // Pressure in Low Chases: If required RR is very low (< 4), but pressure is rising (wickets lost)
+  // Batters might "freeze", increasing dot ball probability
+  if (ctx.requiredRR && ctx.requiredRR < 4 && pressure > 50) {
+    w['0'] *= 1.3
+    w['1'] *= 0.8
+    w['W'] *= 1.2 // Panic sets in
+  }
+
+  // Shot vs Delivery Matchup
+  if (shot === 'Defend') {
+    w['W'] *= 0.3
+    w['0'] *= 3.0
+    w['4'] *= 0.05
+    w['6'] *= 0
+  } else if (shot === 'Slog') {
+    w['W'] *= 2.5
+    w['6'] *= 3.0
+    w['4'] *= 1.5
+    w['0'] *= 0.5
+  }
+
+  // Matchup Logic: Finishers vs Part-timers at the end
+  const isFinisher = batsman.battingRating > 80 && batsman.power > 80
+  const isPartTimer = bowler.bowlingRating < 75
+  if (isFinisher && isPartTimer && ctx.phase === 'Death') {
+    w['6'] *= 1.5
+    w['4'] *= 1.3
+    w['0'] *= 0.6
+  }
+
+  // Execution Impact - Making it even more decisive
+  if (batterExec === 'Perfect') {
+    w['4'] *= 2.5
+    w['6'] *= 3.0
+    w['W'] *= 0.1
+    w['0'] *= 0.4
+  } else if (batterExec === 'Poor') {
+    w['W'] *= 4.0
+    w['0'] *= 2.5
+    w['4'] *= 0.1
+    w['6'] *= 0.05
+  }
+
+  if (bowlerExec === 'Perfect') {
+    w['W'] *= 2.5
+    w['0'] *= 2.5
+    w['4'] *= 0.2
+    w['6'] *= 0.1
+  } else if (bowlerExec === 'Poor') {
+    w['4'] *= 2.5
+    w['6'] *= 2.0
+    w['W'] *= 0.4
+    w['0'] *= 0.5
+  }
+
+  // Pitch Impact
+  if (pitch === 'Flat') {
+    w['4'] *= 1.3; w['6'] *= 1.3; w['W'] *= 0.7
+  } else if (pitch === 'Turning') {
+    if (bowler.role === 'ALL' || bowler.name.toLowerCase().includes('spin')) {
+      w['W'] *= 1.6; w['0'] *= 1.3; w['4'] *= 0.7
+    }
+  } else if (pitch === 'Seaming') {
+    if (bowler.role === 'BOWL' && !bowler.name.toLowerCase().includes('spin')) {
+      w['W'] *= 1.6; w['0'] *= 1.3; w['4'] *= 0.7
+    }
+  }
+
+  // Boundary Size
+  if (ctx.boundarySize === 'Short') {
+    w['4'] *= 1.2; w['6'] *= 1.4
+  } else if (ctx.boundarySize === 'Large') {
+    w['4'] *= 0.8; w['6'] *= 0.7; w['2'] *= 1.4
+  }
 
   // Cleanup: Ensure no negative or zero weights
   for (const k of Object.keys(w) as Outcome[]) {
-    w[k] = Math.max(0.05, w[k])
+    w[k] = Math.max(0.01, w[k])
   }
+  
   return w
 }
 

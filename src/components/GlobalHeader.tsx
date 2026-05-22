@@ -132,57 +132,62 @@ export function GlobalHeader({
             <style>{`
                 .global-header {
                     width: 100%;
-                    background: #0f172a;
-                    color: white;
+                    background: white;
+                    color: var(--text);
                     position: sticky;
                     top: 0;
                     z-index: 1000;
-                    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    border-bottom: 1px solid var(--card-border);
                 }
 
                 .header-container {
-                    max-width: 1200px;
+                    max-width: 1400px;
                     margin: auto;
                     padding: 0 20px;
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    height: 70px;
+                    height: 72px;
                 }
 
                 .header-logo {
-                    font-size: 22px;
-                    font-weight: bold;
+                    font-size: 24px;
+                    font-weight: 900;
                     cursor: pointer;
+                    letter-spacing: -1px;
                 }
 
                 .header-logo span {
-                    color: #22c55e;
+                    color: var(--primary);
                 }
 
                 .header-nav {
                     display: flex;
-                    gap: 20px;
+                    gap: 12px;
                     align-items: center;
                 }
 
                 .header-nav button {
                     background: none;
                     border: none;
-                    color: white;
-                    font-size: 15px;
+                    color: var(--text-muted);
+                    font-size: 0.9rem;
+                    font-weight: 700;
                     cursor: pointer;
-                    padding: 8px 10px;
-                    transition: 0.3s;
+                    padding: 10px 16px;
+                    transition: 0.2s;
+                    border-radius: 8px;
                 }
 
                 .header-nav button:hover {
-                    color: #22c55e;
+                    color: var(--primary);
+                    background: var(--primary-glow);
                 }
 
                 .header-nav .active {
-                    color: #22c55e;
-                    border-bottom: 2px solid #22c55e;
+                    color: var(--primary);
+                    background: var(--primary-glow);
                 }
 
                 .header-actions {
@@ -191,58 +196,94 @@ export function GlobalHeader({
 
                 .dropdown-btn {
                     background: none;
-                    border: none;
-                    font-size: 18px;
+                    border: 1px solid var(--card-border);
+                    font-size: 1.1rem;
                     cursor: pointer;
-                    color: white;
+                    color: var(--text);
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 10px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: 0.2s;
+                }
+                
+                .dropdown-btn:hover {
+                    background: #f8fafc;
                 }
 
                 .dropdown-content {
                     position: absolute;
+                    top: 50px;
                     right: 0;
-                    top: 40px;
-                    background: #1e293b;
-                    border-radius: 8px;
-                    padding: 10px;
-                    display: flex;
-                    flex-direction: column;
-                    min-width: 180px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    background: white;
+                    box-shadow: var(--shadow-lg);
+                    border-radius: 12px;
+                    padding: 8px;
+                    min-width: 220px;
+                    border: 1px solid var(--card-border);
                 }
 
                 .dropdown-content button {
-                    background: none;
-                    border: none;
-                    padding: 8px;
+                    display: block;
+                    width: 100%;
                     text-align: left;
-                    color: white;
+                    padding: 12px 16px;
+                    border: none;
+                    background: none;
+                    font-size: 0.9rem;
+                    font-weight: 600;
                     cursor: pointer;
+                    border-radius: 6px;
+                    color: var(--text);
                 }
 
                 .dropdown-content button:hover {
-                    background: rgba(255,255,255,0.1);
+                    background: #f1f5f9;
+                    color: var(--primary);
                 }
 
-                .danger {
-                    color: #ef4444;
+                .dropdown-content .danger {
+                    color: var(--danger);
+                }
+
+                .dropdown-content .danger:hover {
+                    background: #fef2f2;
+                    color: var(--danger);
                 }
 
                 .hamburger {
                     display: none;
-                    font-size: 22px;
+                    font-size: 28px;
                     cursor: pointer;
+                    color: var(--text);
                 }
 
-                @media (max-width: 900px) {
+                .mobile-settings {
+                    display: none;
+                }
+
+                @media (max-width: 1024px) {
+                    .desktop-only {
+                        display: none;
+                    }
+
+                    .hamburger {
+                        display: block;
+                    }
+
                     .header-nav {
-                        position: absolute;
-                        top: 70px;
+                        position: fixed;
+                        top: 72px;
                         left: 0;
-                        width: 100%;
-                        background: #0f172a;
+                        right: 0;
+                        background: white;
                         flex-direction: column;
-                        align-items: flex-start;
-                        padding: 20px;
+                        padding: 24px;
+                        gap: 16px;
+                        box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+                        border-bottom: 1px solid var(--card-border);
                         display: none;
                     }
 
@@ -252,25 +293,23 @@ export function GlobalHeader({
 
                     .header-nav button {
                         width: 100%;
-                        padding: 12px 0;
-                    }
-
-                    .hamburger {
-                        display: block;
-                    }
-
-                    .desktop-only {
-                        display: none;
+                        text-align: left;
+                        font-size: 1rem;
                     }
 
                     .mobile-settings {
+                        display: block;
                         width: 100%;
+                        border-top: 1px solid var(--card-border);
+                        padding-top: 16px;
                     }
-
+                    
                     .mobile-dropdown {
                         position: relative;
-                        top: 0;
-                        margin-top: 10px;
+                        top: 10px;
+                        width: 100%;
+                        box-shadow: none;
+                        border: 1px solid var(--card-border);
                     }
                 }
             `}</style>

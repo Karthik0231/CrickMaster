@@ -43,7 +43,7 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
           <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Bowler Planning (Next 5 Overs)
           </label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+          <div className="grid-mobile-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
             {remainingOvers.map(overNum => {
               const plannedId = inn.overPlan[overNum] || ''
               return (
@@ -83,13 +83,13 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
       )}
 
       {/* Strategy Section */}
-      <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid var(--card-border)' }}>
+      <div className="stack-mobile" style={{ display: 'flex', gap: '20px', marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid var(--card-border)' }}>
          <div style={{ flex: 1 }}>
              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '8px' }}>
                  BATTING STRATEGY {isUserBatting ? '' : '(AI CONTROLLED)'}
              </label>
              {isUserBatting ? (
-                 <div style={{ display: 'flex', gap: '8px' }}>
+                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                      {['Defensive', 'Normal', 'Aggressive'].map((s) => (
                          <button
                              key={s}
@@ -170,7 +170,7 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
          </div>
       </div>
 
-      <div className="match-actions" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '12px', alignItems: 'center' }}>
+      <div className="match-actions grid-mobile-1" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '12px', alignItems: 'center' }}>
 
         <button
           className="primary"

@@ -4,8 +4,13 @@ export type MatchFormat = 'T20' | 'ODI' | 'Test'
 export type Outcome = '0' | '1' | '2' | '3' | '4' | '6' | 'W' | 'Wd' | 'Nb'
 export type OverPhase = 'Powerplay' | 'Middle' | 'Death'
 export type Strategy = 'Defensive' | 'Normal' | 'Aggressive'
-export type PitchType = 'Batting' | 'Bowling' | 'Balanced'
+export type PitchType = 'Flat' | 'Balanced' | 'Slow' | 'Seaming' | 'Turning'
+export type BoundarySize = 'Short' | 'Normal' | 'Large'
 export type Role = 'BAT' | 'BOWL' | 'ALL' | 'WK'
+
+export type ShotIntent = 'Defend' | 'Single' | 'Gap' | 'ControlledBoundary' | 'Lofted' | 'Slog' | 'Desperation'
+export type DeliveryPlan = 'Yorker' | 'WideYorker' | 'FullAttacking' | 'GoodLength' | 'BackOfLength' | 'Bouncer' | 'Slower' | 'Cutter' | 'SpinAttacking' | 'SpinDefensive'
+export type ExecutionQuality = 'Perfect' | 'Good' | 'Average' | 'Poor'
 
 export interface PlayerStats {
   matches: number
@@ -39,6 +44,15 @@ export interface Player {
   consistency: number // 0-100
   power: number // 0-100
   control: number // 0-100
+  timing: number // 0-100
+  temperament: number // 0-100
+  strikeRotation: number // 0-100
+  spinPlay: number // 0-100
+  pacePlay: number // 0-100
+  yorkerSkill: number // 0-100
+  variationSkill: number // 0-100
+  bouncerSkill: number // 0-100
+  pressureHandling: number // 0-100
   value: number // Auction value in Cr
   career: PlayerStats
   seasonStats?: PlayerStats
@@ -115,7 +129,7 @@ export interface InningsState {
   momentum: number // -100 to +100
   pressure: number // 0-100
   intentPhase: OverPhase
-  batsmanSettling: Record<string, { balls: number; settled: number }> // Tracker
+  batsmanSettling: Record<string, { balls: number, settled: number, dotsInARow: number }> // Tracker
   bowlerOverCounts: Record<string, number>
   overPlan: Record<number, string> // Map of over number (0-indexed) to bowler ID
 }
@@ -132,6 +146,7 @@ export interface MatchConfig {
   strategy: Strategy // Batting strategy
   bowlingStrategy: Strategy // Bowling strategy
   pitch: PitchType
+  boundarySize: BoundarySize
   stadium: string
 }
 
