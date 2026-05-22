@@ -443,7 +443,7 @@ export function initializeInningsAfterToss(state: MatchState, decision: 'Bat' | 
   }
 }
 
-export function simulateBall(state: MatchState, isInteractive: boolean = true): { event: BallEvent; innings: InningsState } {
+export function simulateBall(state: MatchState, isInteractive: boolean = true): { event: BallEvent, innings: InningsState } {
   const inn = state.currentInnings === 1 ? state.innings1! : state.innings2!
   const isUserBatting = state.userTeamId === inn.battingTeamId
   const isUserBowling = state.userTeamId === inn.bowlingTeamId

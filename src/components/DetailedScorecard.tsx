@@ -178,31 +178,10 @@ export function DetailedScorecard({ state }: { state: MatchState }) {
         </div>
       )}
 
-      <div className="manhattan-chart">
-        <h3>Manhattan Chart</h3>
-        <div className="chart-container">
-          {overRuns.map((runs, i) => {
-            const hasWicket = (innings.overOutcomes[i] || []).includes('W')
-            return (
-              <div key={i} className="chart-bar-wrapper">
-                <div
-                  className={`chart-bar ${hasWicket ? 'has-wicket' : ''}`}
-                  style={{ height: `${(runs / maxRuns) * 100}%` }}
-                >
-                  {runs > 0 && <span className="bar-val">{runs}</span>}
-                  {hasWicket && <span className="wicket-indicator">W</span>}
-                </div>
-                <span className="over-num">{i + 1}</span>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
       <div className="table-section" style={{ marginTop: '32px' }}>
         <h3 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--primary)', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Batting</h3>
-        <div className="table-container">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div className="table-container" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
             <thead>
               <tr style={{ background: 'var(--bg-alt)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 <th style={{ padding: '12px', textAlign: 'left' }}>Batter</th>
@@ -239,8 +218,8 @@ export function DetailedScorecard({ state }: { state: MatchState }) {
 
       <div className="table-section" style={{ marginTop: '40px' }}>
         <h3 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--primary)', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Bowling</h3>
-        <div className="table-container">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div className="table-container" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
             <thead>
               <tr style={{ background: 'var(--bg-alt)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 <th style={{ padding: '12px', textAlign: 'left' }}>Bowler</th>

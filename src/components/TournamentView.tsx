@@ -80,7 +80,7 @@ export function TournamentView({ state, userTeamId, onPlayMatch, onSimulateMatch
               </div>
             )}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1px', background: 'var(--card-border)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1px', background: 'var(--card-border)' }}>
             {state.stats.mvpCandidates.slice(0, 5).map((p, i) => (
               <div key={p.id} style={{ padding: '24px 16px', background: 'white', textAlign: 'center', position: 'relative' }}>
                 {i === 0 && (
@@ -88,24 +88,24 @@ export function TournamentView({ state, userTeamId, onPlayMatch, onSimulateMatch
                     MVP
                   </div>
                 )}
-                <div style={{ fontWeight: '900', fontSize: '1rem', marginBottom: '2px' }}>{p.name}</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: '800', marginBottom: '12px' }}>{p.team}</div>
-                <div style={{ fontSize: '1.8rem', fontWeight: '900', color: 'var(--text)', lineHeight: '1' }}>{Math.round(p.points)}</div>
-                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: '700', marginTop: '4px' }}>POINTS</div>
+                <div style={{ fontWeight: '900', fontSize: '0.9rem', marginBottom: '2px' }}>{p.name}</div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--primary)', fontWeight: '800', marginBottom: '12px' }}>{p.team}</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: '900', color: 'var(--text)', lineHeight: '1' }}>{Math.round(p.points)}</div>
+                <div style={{ fontSize: '0.55rem', color: 'var(--text-muted)', fontWeight: '700', marginTop: '4px' }}>POINTS</div>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      <div className="tournament-layout" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '32px' }}>
+      <div className="tournament-layout" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '32px' }}>
         <div className="standings-col">
           <div className="card" style={{ padding: '0', overflow: 'hidden', background: 'white', boxShadow: 'var(--shadow-sm)', marginBottom: '32px' }}>
             <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--card-border)', background: 'var(--bg-alt)' }}>
               <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '900', letterSpacing: '0.05em' }}>POINTS TABLE</h3>
             </div>
-            <div className="table-container">
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <div className="table-container" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
                 <thead>
                   <tr style={{ background: '#f8fafc', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800' }}>
                     <th style={{ padding: '16px 24px' }}>Team</th>
@@ -125,7 +125,7 @@ export function TournamentView({ state, userTeamId, onPlayMatch, onSimulateMatch
                         borderBottom: '1px solid var(--card-border)',
                         background: isUser ? 'var(--primary-glow)' : 'transparent',
                       }}>
-                        <td style={{ padding: '16px 24px', fontWeight: '800' }}>
+                        <td style={{ padding: '16px 24px', fontWeight: '800', whiteSpace: 'nowrap' }}>
                           <span style={{ color: 'var(--text-muted)', marginRight: '12px', fontSize: '0.8rem' }}>{idx + 1}</span>
                           {team.name}
                           {isUser && <span style={{ marginLeft: '8px', fontSize: '0.6rem', background: 'var(--primary)', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>YOU</span>}
@@ -146,7 +146,7 @@ export function TournamentView({ state, userTeamId, onPlayMatch, onSimulateMatch
           </div>
 
           {state.stats && (
-            <div className="grid-2" style={{ gap: '20px', marginBottom: '20px' }}>
+            <div className="stats-caps-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '20px' }}>
               {/* Top Scorers */}
               <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
                 <div style={{ padding: '16px', background: 'var(--bg-alt)', borderBottom: '1px solid var(--card-border)' }}>
@@ -156,8 +156,8 @@ export function TournamentView({ state, userTeamId, onPlayMatch, onSimulateMatch
                   {state.stats.topScorers.slice(0, 5).map((p, i) => (
                     <div key={p.id} style={{ padding: '12px 16px', borderBottom: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <div style={{ fontWeight: '800', fontSize: '0.9rem' }}>{p.name} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({p.team})</span></div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{p.matches} matches</div>
+                        <div style={{ fontWeight: '800', fontSize: '0.85rem' }}>{p.name} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({p.team})</span></div>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{p.matches} matches</div>
                       </div>
                       <div style={{ fontWeight: '900', color: '#ff9800', fontSize: '1.1rem' }}>{p.runs}</div>
                     </div>
@@ -174,8 +174,8 @@ export function TournamentView({ state, userTeamId, onPlayMatch, onSimulateMatch
                   {state.stats.topWicketTakers.slice(0, 5).map((p, i) => (
                     <div key={p.id} style={{ padding: '12px 16px', borderBottom: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <div style={{ fontWeight: '800', fontSize: '0.9rem' }}>{p.name} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({p.team})</span></div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{p.matches} matches</div>
+                        <div style={{ fontWeight: '800', fontSize: '0.85rem' }}>{p.name} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({p.team})</span></div>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{p.matches} matches</div>
                       </div>
                       <div style={{ fontWeight: '900', color: '#9c27b0', fontSize: '1.1rem' }}>{p.wickets}</div>
                     </div>
@@ -186,7 +186,7 @@ export function TournamentView({ state, userTeamId, onPlayMatch, onSimulateMatch
           )}
 
           {state.stats && (
-            <div className="grid-3" style={{ gap: '20px', marginTop: '20px' }}>
+            <div className="stats-minor-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginTop: '20px' }}>
               {/* Most Sixes */}
               <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
                 <div style={{ padding: '12px', background: 'var(--bg-alt)', borderBottom: '1px solid var(--card-border)' }}>

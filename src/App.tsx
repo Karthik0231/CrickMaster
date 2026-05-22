@@ -283,15 +283,25 @@ export default function App() {
             let away = tournament?.teams.find(t => t.id === tentativeMatch.awayId) || teams.find(t => t.id === tentativeMatch.awayId);
 
             if (home && away) {
+                // Determine which team is the user team
+                const isUserAway = appState.userTeamId === away.id;
+                const userTeam = isUserAway ? away : home;
+                const otherTeam = isUserAway ? home : away;
+
                 return (
                     <TeamLineupSelector
-                        team={home}
-                        onConfirm={(xi, order) => handleStartFinalMatch(
-                            { ...home!, players: order.map(id => home!.players.find(p => p.id === id)!) },
-                            { ...away!, players: away!.players.slice(0, 11) },
-                            tentativeMatch.config,
-                            tentativeMatch.matchId
-                        )}
+                        team={userTeam}
+                        onConfirm={(xi, order) => {
+                            const updatedUserTeam = { ...userTeam, players: order.map(id => userTeam.players.find(p => p.id === id)!) };
+                            const defaultOtherTeam = { ...otherTeam, players: otherTeam.players.slice(0, 11) };
+                            
+                            handleStartFinalMatch(
+                                isUserAway ? defaultOtherTeam : updatedUserTeam,
+                                isUserAway ? updatedUserTeam : defaultOtherTeam,
+                                tentativeMatch.config,
+                                tentativeMatch.matchId
+                            )
+                        }}
                         onCancel={() => setShowLineup(false)}
                     />
                 )

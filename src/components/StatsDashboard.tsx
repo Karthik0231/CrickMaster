@@ -14,11 +14,11 @@ export function StatsDashboard({ state }: Props) {
         <div className="stats-dashboard card">
             <h2>Global Statistics Dashboard</h2>
 
-            <div className="stats-grid">
+            <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
                 <section className="stats-card">
                     <h3>Team Performance (All Time)</h3>
-                    <div className="table-container">
-                        <table>
+                    <div className="table-container" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                        <table style={{ minWidth: '500px' }}>
                             <thead>
                                 <tr>
                                     <th>Team</th>

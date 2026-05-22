@@ -6,6 +6,7 @@ import { CommentaryBox } from './CommentaryBox'
 import { Controls } from './Controls'
 import { DetailedScorecard } from './DetailedScorecard'
 import { Action } from '../state/reducer'
+import { MobileMatchUI } from './MobileMatchUI'
 
 interface Props {
   state: MatchState
@@ -18,6 +19,17 @@ export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
   const [viewMode, setViewMode] = useState<'live' | 'scorecard'>('live')
   const inn = state.currentInnings === 1 ? state.innings1 : state.innings2
   const isUserBatting = state.userTeamId === inn?.battingTeamId
+
+  const isMobile = window.innerWidth <= 768;
+
+  React.useEffect(() => {
+    if (isMobile && viewMode === 'live') {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isMobile, viewMode]);
 
   const handleBatsmanSelect = (pid: string) => {
     dispatch({ type: 'SELECT_NEXT_BATSMAN', payload: pid })
@@ -202,14 +214,26 @@ export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
             >
               RETURN TO DASHBOARD
             </button>
-            <button
+            {/* <button
               style={{ padding: '16px', background: 'var(--bg-alt)', color: 'var(--text)', border: '1px solid var(--card-border)' }}
               onClick={() => setViewMode('scorecard')}
             >
               VIEW DETAILED SCORECARD
-            </button>
+            </button> */}
           </div>
         </div>
+      </div>
+    )
+  }
+
+  if (isMobile && viewMode === 'live' && inn) {
+    return (
+      <div className="match-view-container">
+        {renderTossModal()}
+        {renderSelectionModal()}
+        {renderBatsmanModal()}
+        {renderMatchFinished()}
+        <MobileMatchUI state={state} dispatch={dispatch} appDispatch={appDispatch} />
       </div>
     )
   }
