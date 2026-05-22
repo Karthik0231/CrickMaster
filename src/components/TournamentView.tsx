@@ -1,9 +1,5 @@
 import React, { useState } from 'react'
-import {
-  Trophy, Star, ArrowLeft, ChevronRight, Play, FastForward,
-  TrendingUp, TrendingDown, Minus, Zap, Target, Award,
-  BarChart2, Users, Circle, CheckCircle2, Clock, Shield
-} from 'lucide-react'
+import { Trophy, Star, Zap, TrendingUp, Award, Shield, Target, BarChart2, Users, Play, FastForward, ArrowLeft, Crown, Flame, Wind } from 'lucide-react'
 import { TournamentState, Team, TournamentFixture } from '../state/types'
 
 interface Props {
@@ -15,445 +11,822 @@ interface Props {
   onBack: () => void
 }
 
-/* ─── helpers ─── */
-const clr = {
-  bg: '#f8fafc',
-  white: '#ffffff',
-  border: '#e2e8f0',
-  borderLight: '#f1f5f9',
-  text: '#0f172a',
-  muted: '#64748b',
-  faint: '#94a3b8',
-  blue: '#1d4ed8',
-  blueMid: '#2563eb',
-  blueLight: '#eff6ff',
-  blueBorder: '#bfdbfe',
-  green: '#059669',
-  greenLight: '#f0fdf4',
-  greenBorder: '#bbf7d0',
-  red: '#dc2626',
-  redLight: '#fef2f2',
-  redBorder: '#fecaca',
-  amber: '#d97706',
-  amberLight: '#fffbeb',
-  amberBorder: '#fde68a',
-  purple: '#7c3aed',
-  purpleLight: '#f5f3ff',
-  purpleBorder: '#ddd6fe',
-  gold: '#f59e0b',
-  goldLight: '#fef3c7',
-  goldBorder: '#fde68a',
-  dark: '#0f172a',
-  darkMid: '#1e293b',
-  slate: '#334155',
-}
-
-const pill = (bg: string, color: string, border: string): React.CSSProperties => ({
-  display: 'inline-flex', alignItems: 'center', padding: '2px 9px',
-  borderRadius: '99px', background: bg, color, border: `1px solid ${border}`,
-  fontSize: '0.6rem', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase' as const
-})
-
-const card = (extra: React.CSSProperties = {}): React.CSSProperties => ({
-  background: clr.white, borderRadius: '16px', border: `1px solid ${clr.border}`,
-  overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', ...extra
-})
-
-const sectionHead = (label: string, accent: string, sub?: React.ReactNode) => (
-  <div style={{ background: clr.bg, borderBottom: `1px solid ${clr.border}`, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <div style={{ width: '3px', height: '14px', background: accent, borderRadius: '2px' }} />
-      <span style={{ fontSize: '0.68rem', fontWeight: '800', letterSpacing: '0.12em', color: clr.slate, textTransform: 'uppercase' }}>{label}</span>
-    </div>
-    {sub}
-  </div>
-)
-
 export function TournamentView({ state, userTeamId, onPlayMatch, onSimulateMatch, onSimulateToUserMatch, onBack }: Props) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'fixtures' | 'stats'>('overview')
-
   const standings = state.table || []
   const fixtures = state.fixtures || []
-  const upcoming = fixtures.filter(f => !f.completed)
-  const completed = fixtures.filter(f => f.completed)
+  const [activeTab, setActiveTab] = useState<'overview' | 'stats' | 'fixtures'>('overview')
 
   const getTeam = (id: string) => state.teams.find(t => t.id === id) || { name: 'Unknown', short: 'UNK' }
 
-  let winnerTeamId = ''
   let winnerText = ''
+  let winnerTeamId = ''
+
   if (state.status === 'COMPLETED') {
     if (state.mode === 'Series') {
       const winner = state.table[0]
-      if (winner) { winnerTeamId = winner.teamId; winnerText = `${getTeam(winnerTeamId).name} Wins the Series!` }
+      if (winner) {
+        winnerTeamId = winner.teamId
+        winnerText = `${getTeam(winnerTeamId).name} Wins the Series!`
+      }
     } else {
       const finalMatch = state.fixtures.find(f => f.round === 'Final')
-      if (finalMatch?.winnerId) { winnerTeamId = finalMatch.winnerId; winnerText = `${getTeam(winnerTeamId).name} are Champions!` }
+      if (finalMatch && finalMatch.winnerId) {
+        winnerTeamId = finalMatch.winnerId
+        winnerText = `${getTeam(winnerTeamId).name} are Champions!`
+      }
     }
   }
 
-  /* ─── champion banner ─── */
-  const ChampionBanner = () => (
-    <div style={{
-      background: 'linear-gradient(135deg,#78350f 0%,#b45309 40%,#d97706 70%,#f59e0b 100%)',
-      borderRadius: '20px', padding: '32px 24px', marginBottom: '24px', textAlign: 'center',
-      boxShadow: '0 8px 32px rgba(217,119,6,0.35)', position: 'relative', overflow: 'hidden'
-    }}>
-      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.12) 0%, transparent 70%)' }} />
-      <div style={{ position: 'relative' }}>
-        <div style={{ fontSize: '3rem', marginBottom: '8px' }}>🏆</div>
-        <div style={{ fontSize: '0.65rem', fontWeight: '800', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', marginBottom: '8px' }}>TOURNAMENT COMPLETE</div>
-        <h1 style={{ margin: '0 0 4px', fontSize: 'clamp(1.2rem, 5vw, 2rem)', fontWeight: '900', color: 'white', lineHeight: 1.1 }}>{winnerText}</h1>
-        <p style={{ margin: 0, color: 'rgba(255,255,255,0.75)', fontWeight: '600', fontSize: '0.85rem' }}>Congratulations to the winning team!</p>
-      </div>
-    </div>
-  )
-
-  /* ─── top nav ─── */
-  const Header = () => (
-    <div style={{ background: clr.white, borderRadius: '18px', border: `1px solid ${clr.border}`, padding: '14px 18px', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-      <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '8px 14px', borderRadius: '10px', border: `1.5px solid ${clr.border}`, background: clr.white, color: clr.muted, cursor: 'pointer', fontSize: '0.75rem', fontWeight: '700', whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
-        <ArrowLeft size={13} /> BACK
-      </button>
-      <div style={{ flex: 1, minWidth: '120px' }}>
-        <div style={{ fontSize: 'clamp(0.95rem, 3vw, 1.3rem)', fontWeight: '900', color: clr.dark, letterSpacing: '-0.5px', lineHeight: 1 }}>{state.name.toUpperCase()}</div>
-        <div style={{ fontSize: '0.62rem', fontWeight: '800', color: clr.blue, letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{state.mode} · Season 2026</div>
-      </div>
-      <div style={{ display: 'flex', gap: '2px', background: '#f1f5f9', padding: '3px', borderRadius: '10px' }}>
-        {([
-          { key: 'overview', label: 'Overview', icon: <BarChart2 size={12} /> },
-          { key: 'fixtures', label: 'Fixtures', icon: <Clock size={12} /> },
-          { key: 'stats', label: 'Stats', icon: <TrendingUp size={12} /> }
-        ] as const).map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
-            display: 'flex', alignItems: 'center', gap: '4px', padding: '7px 11px',
-            borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.7rem', fontWeight: '800',
-            background: activeTab === t.key ? clr.white : 'transparent',
-            color: activeTab === t.key ? clr.blue : clr.faint,
-            boxShadow: activeTab === t.key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-            transition: 'all 0.15s', whiteSpace: 'nowrap'
-          }}>
-            {t.icon} {t.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-
-  /* ─── standings table ─── */
-  const StandingsTable = () => (
-    <div style={card()}>
-      {sectionHead('Points Table', clr.blue)}
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '380px' }}>
-          <thead>
-            <tr style={{ background: clr.bg }}>
-              {['#', 'Team', 'P', 'W', 'L', 'NRR', 'Pts'].map((h, i) => (
-                <th key={h} style={{ padding: i === 0 ? '11px 10px 11px 16px' : i === 1 ? '11px 12px' : '11px 12px', textAlign: i > 1 ? 'center' : 'left', fontSize: '0.6rem', fontWeight: '800', color: clr.faint, letterSpacing: '0.08em', textTransform: 'uppercase', borderBottom: `1px solid ${clr.border}` }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {standings.map((s, idx) => {
-              const team = getTeam(s.teamId)
-              const isUser = s.teamId === userTeamId
-              const qualify = idx < 4
-              return (
-                <tr key={s.teamId} style={{ background: isUser ? clr.blueLight : idx % 2 === 0 ? clr.white : '#fafbfc', borderBottom: `1px solid ${clr.borderLight}`, transition: 'background 0.15s' }}>
-                  <td style={{ padding: '13px 10px 13px 16px', fontWeight: '800', fontSize: '0.78rem', color: qualify ? clr.blue : clr.faint }}>{idx + 1}</td>
-                  <td style={{ padding: '13px 12px', fontWeight: '800', fontSize: '0.88rem', color: clr.dark }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                      <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: isUser ? clr.blue : clr.bg, border: `1.5px solid ${isUser ? clr.blue : clr.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: '900', color: isUser ? 'white' : clr.muted, flexShrink: 0 }}>
-                        {team.short?.slice(0, 3)}
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: '800', color: clr.dark, fontSize: '0.85rem', lineHeight: 1 }}>{team.name}</div>
-                        {isUser && <span style={{ ...pill(clr.blue, 'white', clr.blue), marginTop: '3px' }}>YOU</span>}
-                      </div>
-                    </div>
-                  </td>
-                  <td style={{ padding: '13px 12px', textAlign: 'center', fontWeight: '600', fontSize: '0.82rem', color: clr.muted }}>{s.p}</td>
-                  <td style={{ padding: '13px 12px', textAlign: 'center', fontWeight: '700', fontSize: '0.82rem', color: clr.green }}>{s.w}</td>
-                  <td style={{ padding: '13px 12px', textAlign: 'center', fontWeight: '700', fontSize: '0.82rem', color: clr.red }}>{s.l}</td>
-                  <td style={{ padding: '13px 12px', textAlign: 'center', fontWeight: '700', fontSize: '0.82rem', color: s.nrr >= 0 ? clr.green : clr.red }}>
-                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
-                      {s.nrr >= 0.01 ? <TrendingUp size={11} /> : s.nrr <= -0.01 ? <TrendingDown size={11} /> : <Minus size={11} />}
-                      {s.nrr > 0 ? '+' : ''}{s.nrr.toFixed(3)}
-                    </span>
-                  </td>
-                  <td style={{ padding: '13px 16px 13px 12px', textAlign: 'center', fontWeight: '900', fontSize: '1rem', color: clr.blue }}>{s.pts}</td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-
-  /* ─── MVP leaderboard ─── */
-  const MVPLeaderboard = () => {
-    if (!state.stats?.mvpCandidates?.length) return null
-    return (
-      <div style={card()}>
-        {sectionHead('MVP Race', clr.gold, (
-          state.stats.mvpCandidates[0] && (
-            <span style={pill(clr.goldLight, clr.amber, clr.goldBorder)}>
-              Leader: {state.stats.mvpCandidates[0].name}
-            </span>
-          )
-        ))}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1px', background: clr.border }}>
-          {state.stats.mvpCandidates.slice(0, 5).map((p, i) => (
-            <div key={p.id} style={{ background: clr.white, padding: '18px 14px', textAlign: 'center', position: 'relative' }}>
-              {i === 0 && (
-                <div style={{ position: 'absolute', top: '10px', right: '10px', background: clr.gold, color: clr.dark, padding: '1px 6px', borderRadius: '4px', fontSize: '0.55rem', fontWeight: '900', letterSpacing: '0.04em' }}>MVP</div>
-              )}
-              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: i === 0 ? clr.goldLight : clr.bg, border: `2px solid ${i === 0 ? clr.goldBorder : clr.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', fontSize: '0.75rem', fontWeight: '900', color: i === 0 ? clr.amber : clr.muted }}>
-                {i + 1}
-              </div>
-              <div style={{ fontWeight: '900', fontSize: '0.82rem', color: clr.dark, lineHeight: 1.2 }}>{p.name}</div>
-              <div style={{ fontSize: '0.62rem', color: clr.blue, fontWeight: '800', margin: '3px 0 10px', letterSpacing: '0.04em' }}>{p.team}</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: '900', color: clr.dark, lineHeight: 1 }}>{Math.round(p.points)}</div>
-              <div style={{ fontSize: '0.55rem', color: clr.faint, fontWeight: '700', marginTop: '3px', textTransform: 'uppercase' }}>pts</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  /* ─── fixture card ─── */
-  const FixtureCard = ({ f, showActions = true }: { f: TournamentFixture; showActions?: boolean }) => {
-    const home = getTeam(f.homeTeamId)
-    const away = getTeam(f.awayTeamId)
-    const isUserMatch = f.homeTeamId === userTeamId || f.awayTeamId === userTeamId
-    return (
-      <div style={{
-        borderRadius: '14px', border: `1.5px solid ${isUserMatch && !f.completed ? clr.blueBorder : clr.border}`,
-        background: isUserMatch && !f.completed ? clr.blueLight : clr.white,
-        padding: '16px', transition: 'all 0.15s'
-      }}>
-        {(f.round || isUserMatch) && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            {f.round && <span style={pill(clr.bg, clr.muted, clr.border)}>{f.round}</span>}
-            {isUserMatch && !f.completed && <span style={pill(clr.blue, 'white', clr.blue)}>YOUR MATCH</span>}
-            {f.completed && <span style={pill(clr.greenLight, clr.green, clr.greenBorder)}>
-              <CheckCircle2 size={9} style={{ marginRight: '3px' }} /> Completed
-            </span>}
-          </div>
-        )}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '12px', marginBottom: showActions && !f.completed ? '14px' : '0' }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: clr.bg, border: `1.5px solid ${clr.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 6px', fontSize: '0.65rem', fontWeight: '900', color: clr.slate }}>
-              {home.short?.slice(0, 3)}
-            </div>
-            <div style={{ fontSize: '0.88rem', fontWeight: '900', color: clr.dark }}>{home.short}</div>
-            <div style={{ fontSize: '0.6rem', color: clr.faint, fontWeight: '600' }}>HOME</div>
-            {f.completed && f.winnerId === f.homeTeamId && <div style={{ fontSize: '0.6rem', color: clr.green, fontWeight: '800', marginTop: '3px' }}>WON</div>}
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '0.7rem', fontWeight: '900', color: clr.faint, letterSpacing: '0.1em' }}>VS</div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: clr.bg, border: `1.5px solid ${clr.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 6px', fontSize: '0.65rem', fontWeight: '900', color: clr.slate }}>
-              {away.short?.slice(0, 3)}
-            </div>
-            <div style={{ fontSize: '0.88rem', fontWeight: '900', color: clr.dark }}>{away.short}</div>
-            <div style={{ fontSize: '0.6rem', color: clr.faint, fontWeight: '600' }}>AWAY</div>
-            {f.completed && f.winnerId === f.awayTeamId && <div style={{ fontSize: '0.6rem', color: clr.green, fontWeight: '800', marginTop: '3px' }}>WON</div>}
-          </div>
-        </div>
-        {showActions && !f.completed && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-            <button onClick={() => onPlayMatch(f.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: '11px', fontSize: '0.75rem', fontWeight: '800', borderRadius: '10px', border: 'none', background: `linear-gradient(135deg,${clr.blue},${clr.blueMid})`, color: 'white', cursor: 'pointer', letterSpacing: '0.05em', boxShadow: '0 3px 10px rgba(29,78,216,0.25)' }}>
-              <Play size={12} fill="white" /> PLAY
-            </button>
-            <button onClick={() => onSimulateMatch(f.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: '11px', fontSize: '0.75rem', fontWeight: '800', borderRadius: '10px', border: `1.5px solid ${clr.border}`, background: clr.white, color: clr.muted, cursor: 'pointer', letterSpacing: '0.05em' }}>
-              <FastForward size={12} /> SIM
-            </button>
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  /* ─── stat leaderboard row ─── */
-  const LeaderRow = ({ rank, name, team, value, color }: { rank: number; name: string; team: string; value: React.ReactNode; color: string }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '11px 16px', borderBottom: `1px solid ${clr.borderLight}` }}>
-      <div style={{ width: '22px', height: '22px', borderRadius: '6px', background: rank === 1 ? clr.goldLight : clr.bg, border: `1px solid ${rank === 1 ? clr.goldBorder : clr.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.62rem', fontWeight: '900', color: rank === 1 ? clr.amber : clr.faint, flexShrink: 0 }}>{rank}</div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: '0.82rem', fontWeight: '800', color: clr.dark, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
-        <div style={{ fontSize: '0.62rem', color: clr.faint, fontWeight: '700' }}>{team}</div>
-      </div>
-      <div style={{ fontSize: '1rem', fontWeight: '900', color, flexShrink: 0 }}>{value}</div>
-    </div>
-  )
-
-  /* ─── overview tab ─── */
-  const OverviewTab = () => (
-    <div style={{ display: 'grid', gap: '18px' }}>
-      {/* quick summary bar */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-        {[
-          { label: 'Matches Played', value: completed.length, icon: <CheckCircle2 size={16} color={clr.green} />, bg: clr.greenLight, border: clr.greenBorder },
-          { label: 'Remaining', value: upcoming.length, icon: <Clock size={16} color={clr.blue} />, bg: clr.blueLight, border: clr.blueBorder },
-          { label: 'Teams', value: state.teams.length, icon: <Users size={16} color={clr.purple} />, bg: clr.purpleLight, border: clr.purpleBorder },
-        ].map(s => (
-          <div key={s.label} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: '14px', padding: '14px 16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>{s.icon}</div>
-            <div style={{ fontSize: 'clamp(1.2rem, 4vw, 1.6rem)', fontWeight: '900', color: clr.dark, lineHeight: 1 }}>{s.value}</div>
-            <div style={{ fontSize: '0.62rem', fontWeight: '700', color: clr.muted, marginTop: '3px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      <MVPLeaderboard />
-      <StandingsTable />
-
-      {/* Recent results */}
-      {completed.length > 0 && (
-        <div style={card()}>
-          {sectionHead('Recent Results', clr.green)}
-          <div style={{ padding: '14px', display: 'grid', gap: '8px' }}>
-            {completed.slice(-4).reverse().map(f => <FixtureCard key={f.id} f={f} showActions={false} />)}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-
-  /* ─── fixtures tab ─── */
-  const FixturesTab = () => (
-    <div style={{ display: 'grid', gap: '18px' }}>
-      {upcoming.length > 0 && (
-        <div style={card()}>
-          {sectionHead('Upcoming Fixtures', clr.blue, onSimulateToUserMatch && (
-            <button onClick={onSimulateToUserMatch} style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', borderRadius: '8px', border: `1.5px solid ${clr.blueBorder}`, background: clr.blueLight, color: clr.blue, fontSize: '0.65rem', fontWeight: '800', cursor: 'pointer', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
-              <FastForward size={11} /> SIM TO MY MATCH
-            </button>
-          ))}
-          <div style={{ padding: '14px', display: 'grid', gap: '8px' }}>
-            {upcoming.map(f => <FixtureCard key={f.id} f={f} />)}
-          </div>
-          {upcoming.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '48px', color: clr.faint, fontSize: '0.85rem', fontWeight: '600' }}>All fixtures completed!</div>
-          )}
-        </div>
-      )}
-      {completed.length > 0 && (
-        <div style={card()}>
-          {sectionHead('Completed', clr.green)}
-          <div style={{ padding: '14px', display: 'grid', gap: '8px' }}>
-            {completed.slice().reverse().map(f => <FixtureCard key={f.id} f={f} showActions={false} />)}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-
-  /* ─── stats tab ─── */
-  const StatsTab = () => {
-    if (!state.stats) return <div style={{ textAlign: 'center', padding: '60px', color: clr.faint, fontWeight: '600' }}>Stats will appear once matches are played.</div>
-    const { topScorers, topWicketTakers, topSixHitters, bestEconomies, bestStrikeRates, mvpCandidates, playerStats } = state.stats
-    return (
-      <div style={{ display: 'grid', gap: '18px' }}>
-        {/* Orange + Purple cap */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
-          <div style={card()}>
-            {sectionHead('Orange Cap — Top Scorers', '#f97316')}
-            <div>
-              {topScorers.slice(0, 5).map((p, i) => (
-                <LeaderRow key={p.id} rank={i + 1} name={p.name} team={p.team} value={<>{p.runs} <span style={{ fontSize: '0.65rem', color: clr.faint, fontWeight: '500' }}>runs</span></>} color="#f97316" />
-              ))}
-            </div>
-          </div>
-          <div style={card()}>
-            {sectionHead('Purple Cap — Top Wickets', clr.purple)}
-            <div>
-              {topWicketTakers.slice(0, 5).map((p, i) => (
-                <LeaderRow key={p.id} rank={i + 1} name={p.name} team={p.team} value={<>{p.wickets} <span style={{ fontSize: '0.65rem', color: clr.faint, fontWeight: '500' }}>wkts</span></>} color={clr.purple} />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Three mini leaderboards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
-          {[
-            { title: 'Most Sixes', accent: clr.amber, data: topSixHitters.slice(0, 3).map(p => ({ id: p.id, name: p.name, team: p.team, val: `${p.sixes} 6s` })) },
-            { title: 'Best Economy', accent: clr.green, data: bestEconomies.slice(0, 3).map(p => ({ id: p.id, name: p.name, team: p.team, val: p.economy.toFixed(2) })) },
-            { title: 'Best Strike Rate', accent: clr.red, data: bestStrikeRates.slice(0, 3).map(p => ({ id: p.id, name: p.name, team: p.team, val: p.strikeRate.toFixed(1) })) },
-          ].map(sec => (
-            <div key={sec.title} style={card()}>
-              {sectionHead(sec.title, sec.accent)}
-              <div>
-                {sec.data.map((p, i) => (
-                  <LeaderRow key={p.id} rank={i + 1} name={p.name} team={p.team} value={p.val} color={sec.accent} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* All-round performers */}
-        <div style={card()}>
-          {sectionHead('Top Performers — All Round', clr.blue)}
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '480px' }}>
-              <thead>
-                <tr style={{ background: clr.bg, borderBottom: `1px solid ${clr.border}` }}>
-                  {['Player', 'Runs', 'Balls', 'SR', 'Wkts', 'Econ', 'Pts'].map((h, i) => (
-                    <th key={h} style={{ padding: i === 0 ? '10px 10px 10px 16px' : '10px', textAlign: i > 0 ? 'center' : 'left', fontSize: '0.6rem', fontWeight: '800', color: clr.faint, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {mvpCandidates.slice(0, 10).map((p, idx) => {
-                  const s = playerStats[p.id]
-                  if (!s) return null
-                  const sr = s.balls > 0 ? ((s.runs / s.balls) * 100).toFixed(1) : '–'
-                  const econ = s.ballsBowled > 0 ? (s.runsConceded / (s.ballsBowled / 6)).toFixed(2) : '–'
-                  return (
-                    <tr key={p.id} style={{ background: idx % 2 === 0 ? clr.white : '#fafbfc', borderBottom: `1px solid ${clr.borderLight}` }}>
-                      <td style={{ padding: '13px 10px 13px 16px' }}>
-                        <div style={{ fontWeight: '800', fontSize: '0.85rem', color: clr.dark }}>{p.name}</div>
-                        <div style={{ fontSize: '0.62rem', color: clr.blue, fontWeight: '700' }}>{p.team}</div>
-                      </td>
-                      <td style={{ padding: '13px 10px', textAlign: 'center', fontWeight: '700', color: clr.dark, fontSize: '0.82rem' }}>{s.runs}</td>
-                      <td style={{ padding: '13px 10px', textAlign: 'center', color: clr.muted, fontSize: '0.82rem' }}>{s.balls}</td>
-                      <td style={{ padding: '13px 10px', textAlign: 'center', fontWeight: '700', color: clr.muted, fontSize: '0.82rem' }}>{sr}</td>
-                      <td style={{ padding: '13px 10px', textAlign: 'center', fontWeight: '800', color: s.wickets > 0 ? clr.purple : clr.faint, fontSize: '0.82rem' }}>{s.wickets}</td>
-                      <td style={{ padding: '13px 10px', textAlign: 'center', color: clr.muted, fontSize: '0.82rem' }}>{econ}</td>
-                      <td style={{ padding: '13px 16px 13px 10px', textAlign: 'center', fontWeight: '900', color: clr.blue, fontSize: '0.88rem' }}>{Math.round(p.points)}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  const upcomingFixtures = fixtures.filter(f => !f.completed)
+  const completedFixtures = fixtures.filter(f => f.completed)
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '14px 12px', fontFamily: 'system-ui,-apple-system,sans-serif', background: clr.bg, minHeight: '100vh' }}>
-      {state.status === 'COMPLETED' && <ChampionBanner />}
-      <Header />
-      {activeTab === 'overview' && <OverviewTab />}
-      {activeTab === 'fixtures' && <FixturesTab />}
-      {activeTab === 'stats' && <StatsTab />}
+    <div style={{
+      minHeight: '100vh',
+      background: '#F4F1EB',
+      fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif",
+    }}>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;0,9..40,900;1,9..40,400&family=Playfair+Display:wght@700;900&display=swap');
+
         * { box-sizing: border-box; }
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        button:hover:not(:disabled) { opacity: 0.86; transform: translateY(-1px); }
-        button:active:not(:disabled) { transform: translateY(0); }
-        @media (max-width: 480px) {
-          table { font-size: 0.78rem; }
+
+        .tv-root {
+          min-height: 100vh;
+          background: #F4F1EB;
+          font-family: 'DM Sans', 'Helvetica Neue', sans-serif;
+        }
+
+        .tv-topbar {
+          background: #111;
+          color: #fff;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 32px;
+          height: 64px;
+          position: sticky;
+          top: 0;
+          z-index: 100;
+          gap: 16px;
+        }
+        .tv-topbar-left { display: flex; align-items: center; gap: 16px; min-width: 0; }
+        .tv-back-btn {
+          display: flex; align-items: center; gap: 6px;
+          background: rgba(255,255,255,0.08);
+          border: 1px solid rgba(255,255,255,0.12);
+          color: #fff;
+          padding: 7px 14px;
+          border-radius: 8px;
+          font-size: 0.78rem;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          cursor: pointer;
+          transition: background 0.15s;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        .tv-back-btn:hover { background: rgba(255,255,255,0.15); }
+        .tv-title-group { display: flex; flex-direction: column; min-width: 0; }
+        .tv-main-title {
+          font-family: 'Playfair Display', serif;
+          font-size: 1.2rem;
+          font-weight: 900;
+          letter-spacing: -0.02em;
+          line-height: 1;
+          color: #fff;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .tv-sub-title {
+          font-size: 0.68rem;
+          font-weight: 500;
+          color: rgba(255,255,255,0.4);
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          margin-top: 2px;
+        }
+        .tv-topbar-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .tv-status-badge {
+          display: flex; align-items: center; gap: 6px;
+          background: #22c55e;
+          color: #fff;
+          font-size: 0.65rem;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          padding: 4px 10px;
+          border-radius: 20px;
+          white-space: nowrap;
+        }
+        .tv-status-badge.completed { background: #6366f1; }
+        .tv-status-dot {
+          width: 6px; height: 6px; border-radius: 50%; background: #fff;
+          animation: tvpulse 1.4s infinite;
+        }
+        @keyframes tvpulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        .tv-winner-banner {
+          background: linear-gradient(110deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+          padding: 48px 24px;
+          text-align: center;
+          position: relative;
+          overflow: hidden;
+        }
+        .tv-winner-banner::before {
+          content: '';
+          position: absolute; inset: 0;
+          background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/svg%3E");
+        }
+        .tv-winner-trophy-row {
+          display: flex; align-items: center; justify-content: center; gap: 20px;
+          margin-bottom: 12px; flex-wrap: wrap;
+        }
+        .tv-winner-text {
+          font-family: 'Playfair Display', serif;
+          font-size: clamp(1.5rem, 4vw, 3rem);
+          font-weight: 900;
+          color: #FFD700;
+          letter-spacing: -0.02em;
+          line-height: 1.1;
+        }
+        .tv-winner-sub { font-size: 0.95rem; color: rgba(255,255,255,0.5); font-weight: 500; }
+
+        .tv-tabs {
+          background: #fff;
+          border-bottom: 1px solid #e5e0d8;
+          display: flex;
+          padding: 0 24px;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+        .tv-tab {
+          display: flex; align-items: center; gap: 7px;
+          padding: 15px 20px;
+          font-size: 0.76rem; font-weight: 700;
+          letter-spacing: 0.07em; text-transform: uppercase;
+          color: #999; cursor: pointer;
+          border-bottom: 3px solid transparent;
+          white-space: nowrap;
+          background: none; border-top: none; border-left: none; border-right: none;
+          transition: color 0.15s;
+          flex-shrink: 0;
+        }
+        .tv-tab.active { color: #111; border-bottom-color: #111; }
+        .tv-tab:hover { color: #444; }
+
+        .tv-body { padding: 24px; max-width: 1400px; margin: 0 auto; }
+
+        .tv-section-label {
+          font-size: 0.65rem; font-weight: 800;
+          letter-spacing: 0.15em; text-transform: uppercase;
+          color: #999; margin-bottom: 14px;
+          display: flex; align-items: center; gap: 8px;
+        }
+        .tv-section-label::after { content: ''; flex: 1; height: 1px; background: #e5e0d8; }
+
+        .tv-mvp-strip {
+          background: #111;
+          border-radius: 20px;
+          overflow: hidden;
+          margin-bottom: 28px;
+        }
+        .tv-mvp-header {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 18px 24px;
+          border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+        .tv-mvp-title {
+          font-size: 0.7rem; font-weight: 800; color: #FFD700;
+          letter-spacing: 0.14em; text-transform: uppercase;
+          display: flex; align-items: center; gap: 8px;
+        }
+        .tv-mvp-leader { font-size: 0.72rem; color: rgba(255,255,255,0.45); font-weight: 500; }
+        .tv-mvp-leader strong { color: #fff; font-weight: 800; }
+        .tv-mvp-cards {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+        }
+        @media (max-width: 900px) { .tv-mvp-cards { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 540px) { .tv-mvp-cards { grid-template-columns: repeat(2, 1fr); } }
+        .tv-mvp-card {
+          padding: 22px 14px;
+          text-align: center;
+          border-right: 1px solid rgba(255,255,255,0.05);
+          position: relative;
+        }
+        .tv-mvp-card:last-child { border-right: none; }
+        .tv-mvp-rank {
+          position: absolute; top: 10px; left: 12px;
+          font-size: 1.8rem; font-weight: 900;
+          color: rgba(255,255,255,0.04);
+          font-family: 'Playfair Display', serif; line-height: 1;
+        }
+        .tv-mvp-badge {
+          display: inline-block;
+          background: #FFD700; color: #000;
+          font-size: 0.52rem; font-weight: 900; letter-spacing: 0.1em;
+          padding: 2px 7px; border-radius: 4px; margin-bottom: 7px; text-transform: uppercase;
+        }
+        .tv-mvp-name { font-size: 0.85rem; font-weight: 800; color: #fff; margin-bottom: 1px; }
+        .tv-mvp-team { font-size: 0.62rem; color: rgba(255,255,255,0.38); font-weight: 600; margin-bottom: 12px; }
+        .tv-mvp-pts { font-size: 2rem; font-weight: 900; color: #fff; line-height: 1; }
+        .tv-mvp-pts-label { font-size: 0.58rem; color: rgba(255,255,255,0.3); font-weight: 700; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.1em; }
+
+        .tv-overview-grid {
+          display: grid;
+          grid-template-columns: 1.15fr 0.85fr;
+          gap: 28px;
+        }
+        @media (max-width: 1024px) { .tv-overview-grid { grid-template-columns: 1fr; } }
+
+        .tv-card {
+          background: #fff;
+          border-radius: 18px;
+          overflow: hidden;
+          border: 1px solid #e8e3da;
+          margin-bottom: 20px;
+        }
+        .tv-card-head {
+          padding: 16px 20px;
+          border-bottom: 1px solid #f2ede4;
+          display: flex; align-items: center; justify-content: space-between;
+        }
+        .tv-card-title {
+          font-size: 0.7rem; font-weight: 800;
+          letter-spacing: 0.1em; text-transform: uppercase;
+          color: #111; display: flex; align-items: center; gap: 8px;
+        }
+        .tv-card-icon {
+          width: 26px; height: 26px; border-radius: 7px;
+          display: flex; align-items: center; justify-content: center;
+        }
+
+        .tv-standings-table { width: 100%; border-collapse: collapse; }
+        .tv-standings-table thead tr { background: #faf8f4; }
+        .tv-standings-table th {
+          padding: 11px 14px;
+          font-size: 0.62rem; font-weight: 800; color: #bbb;
+          text-transform: uppercase; letter-spacing: 0.1em; text-align: left;
+        }
+        .tv-standings-table th:first-child { padding-left: 20px; }
+        .tv-standings-table th:last-child { padding-right: 20px; text-align: right; }
+        .tv-standings-row { border-bottom: 1px solid #f5f1eb; transition: background 0.1s; }
+        .tv-standings-row:hover { background: #faf8f4; }
+        .tv-standings-row.is-user { background: #fffbf0; }
+        .tv-standings-row td { padding: 13px 14px; font-size: 0.86rem; }
+        .tv-standings-row td:first-child { padding-left: 20px; }
+        .tv-standings-row td:last-child { padding-right: 20px; text-align: right; }
+        .tv-rank-num {
+          display: inline-flex; align-items: center; justify-content: center;
+          width: 22px; height: 22px; border-radius: 6px;
+          font-size: 0.7rem; font-weight: 900;
+          background: #f0ebe2; color: #777;
+          margin-right: 10px; flex-shrink: 0;
+        }
+        .tv-rank-num.top { background: #FFD700; color: #000; }
+        .tv-team-name { font-weight: 800; color: #111; }
+        .tv-you-pill {
+          display: inline-block;
+          background: #111; color: #fff;
+          font-size: 0.52rem; font-weight: 900; letter-spacing: 0.1em;
+          padding: 2px 6px; border-radius: 4px; margin-left: 7px; vertical-align: middle;
+        }
+        .tv-nrr-pos { color: #16a34a; font-weight: 800; }
+        .tv-nrr-neg { color: #dc2626; font-weight: 800; }
+        .tv-pts-val { font-weight: 900; font-size: 1rem; color: #111; }
+
+        .tv-fixture-list { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+        .tv-fixture-card {
+          border: 1px solid #ede8de;
+          border-radius: 14px;
+          padding: 18px;
+          background: #faf8f4;
+          transition: box-shadow 0.15s;
+        }
+        .tv-fixture-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
+        .tv-fixture-card.is-user-game { border-color: #111; background: #fff; }
+        .tv-fixture-round {
+          font-size: 0.6rem; font-weight: 800; letter-spacing: 0.12em;
+          text-transform: uppercase; color: #bbb; margin-bottom: 12px;
+        }
+        .tv-fixture-matchup {
+          display: flex; align-items: center; justify-content: space-between;
+          margin-bottom: 16px;
+        }
+        .tv-fixture-team { text-align: center; flex: 1; }
+        .tv-fixture-team-short {
+          font-size: 1.3rem; font-weight: 900; color: #111;
+          font-family: 'Playfair Display', serif;
+        }
+        .tv-fixture-team-name { font-size: 0.62rem; color: #aaa; font-weight: 600; margin-top: 2px; }
+        .tv-fixture-vs { font-size: 0.68rem; font-weight: 900; color: #ddd; letter-spacing: 0.08em; padding: 0 12px; }
+        .tv-fixture-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .tv-btn-play {
+          display: flex; align-items: center; justify-content: center; gap: 6px;
+          background: #111; color: #fff;
+          border: none; border-radius: 10px; padding: 11px;
+          font-size: 0.72rem; font-weight: 800; letter-spacing: 0.07em;
+          cursor: pointer; transition: background 0.15s;
+        }
+        .tv-btn-play:hover { background: #333; }
+        .tv-btn-sim {
+          display: flex; align-items: center; justify-content: center; gap: 6px;
+          background: transparent; color: #111;
+          border: 1.5px solid #ddd; border-radius: 10px; padding: 11px;
+          font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+          cursor: pointer; transition: border-color 0.15s, background 0.15s;
+        }
+        .tv-btn-sim:hover { border-color: #111; }
+        .tv-sim-all-btn {
+          display: flex; align-items: center; gap: 5px;
+          background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7);
+          border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 6px 12px;
+          font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em;
+          cursor: pointer; transition: background 0.15s;
+          white-space: nowrap;
+        }
+        .tv-sim-all-btn:hover { background: rgba(255,255,255,0.18); color: #fff; }
+
+        .tv-stats-grid {
+          display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;
+        }
+        @media (max-width: 768px) { .tv-stats-grid { grid-template-columns: 1fr; } }
+        .tv-stats-grid-3 {
+          display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px;
+        }
+        @media (max-width: 900px) { .tv-stats-grid-3 { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 560px) { .tv-stats-grid-3 { grid-template-columns: 1fr; } }
+
+        .tv-stat-row {
+          padding: 13px 20px; border-bottom: 1px solid #f5f1eb;
+          display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        }
+        .tv-stat-row:last-child { border-bottom: none; }
+        .tv-stat-player-name { font-size: 0.86rem; font-weight: 800; color: #111; }
+        .tv-stat-player-team { font-size: 0.62rem; color: #bbb; font-weight: 600; }
+        .tv-stat-big { font-size: 1.4rem; font-weight: 900; flex-shrink: 0; }
+        .tv-orange { color: #f97316; }
+        .tv-purple { color: #a855f7; }
+        .tv-green { color: #16a34a; }
+        .tv-blue { color: #3b82f6; }
+        .tv-progress-bar { height: 3px; background: #f0ebe2; border-radius: 2px; margin-top: 6px; max-width: 120px; }
+        .tv-progress-fill { height: 100%; border-radius: 2px; }
+
+        .tv-allround-table { width: 100%; border-collapse: collapse; }
+        .tv-allround-table th {
+          padding: 12px 18px; font-size: 0.62rem; font-weight: 800; color: #bbb;
+          text-transform: uppercase; letter-spacing: 0.1em;
+          background: #faf8f4; text-align: left; border-bottom: 1px solid #f0ebe2;
+          white-space: nowrap;
+        }
+        .tv-allround-table td {
+          padding: 12px 18px; font-size: 0.84rem; border-bottom: 1px solid #f8f5f0;
+        }
+        .tv-allround-table tr:hover td { background: #faf8f4; }
+        .tv-allround-pts { font-weight: 900; color: #111; }
+
+        .tv-result-card {
+          border: 1px solid #ede8de; border-radius: 12px;
+          padding: 14px 18px; background: #faf8f4;
+          display: flex; align-items: center; justify-content: space-between; gap: 12px;
+          margin-bottom: 8px;
+        }
+        .tv-result-teams { font-size: 0.85rem; font-weight: 800; color: #111; }
+        .tv-result-score { font-size: 0.68rem; color: #aaa; font-weight: 600; margin-top: 2px; }
+        .tv-result-winner-tag {
+          background: #111; color: #fff;
+          font-size: 0.58rem; font-weight: 800; letter-spacing: 0.08em;
+          padding: 4px 10px; border-radius: 6px; white-space: nowrap; text-transform: uppercase;
+          flex-shrink: 0;
+        }
+
+        .tv-fixtures-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+          gap: 14px;
+          margin-bottom: 28px;
+        }
+
+        @media (max-width: 600px) {
+          .tv-topbar { padding: 0 16px; height: 58px; }
+          .tv-body { padding: 16px; }
+          .tv-tabs { padding: 0 12px; }
+          .tv-tab { padding: 13px 14px; font-size: 0.7rem; gap: 5px; }
+          .tv-winner-banner { padding: 36px 16px; }
         }
       `}</style>
+
+      <div className="tv-root">
+        {/* Top Bar */}
+        <div className="tv-topbar">
+          <div className="tv-topbar-left">
+            <button className="tv-back-btn" onClick={onBack}>
+              <ArrowLeft size={13} /> Back
+            </button>
+            <div className="tv-title-group">
+              <div className="tv-main-title">{state.name}</div>
+              <div className="tv-sub-title">{state.mode} · Season 2026</div>
+            </div>
+          </div>
+          <div className="tv-topbar-right">
+            {onSimulateToUserMatch && (
+              <button className="tv-sim-all-btn" onClick={onSimulateToUserMatch}>
+                <FastForward size={11} /> Skip to My Match
+              </button>
+            )}
+            <div className={`tv-status-badge ${state.status === 'COMPLETED' ? 'completed' : ''}`}>
+              {state.status !== 'COMPLETED' && <div className="tv-status-dot" />}
+              {state.status === 'COMPLETED' ? 'Completed' : 'Live'}
+            </div>
+          </div>
+        </div>
+
+        {/* Winner Banner */}
+        {state.status === 'COMPLETED' && (
+          <div className="tv-winner-banner">
+            <div className="tv-winner-trophy-row">
+              <Trophy size={36} color="#FFD700" />
+              <div className="tv-winner-text">{winnerText}</div>
+              <Trophy size={36} color="#FFD700" />
+            </div>
+            <div className="tv-winner-sub">Congratulations to the champions!</div>
+          </div>
+        )}
+
+        {/* Tabs */}
+        <div className="tv-tabs">
+          {(['overview', 'stats', 'fixtures'] as const).map(tab => (
+            <button
+              key={tab}
+              className={`tv-tab ${activeTab === tab ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab === 'overview' && <Shield size={12} />}
+              {tab === 'stats' && <BarChart2 size={12} />}
+              {tab === 'fixtures' && <Zap size={12} />}
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* Body */}
+        <div className="tv-body">
+
+          {/* ── OVERVIEW ── */}
+          {activeTab === 'overview' && (
+            <>
+              {state.stats && state.stats.mvpCandidates.length > 0 && (
+                <div className="tv-mvp-strip">
+                  <div className="tv-mvp-header">
+                    <div className="tv-mvp-title">
+                      <Star size={13} fill="#FFD700" color="#FFD700" /> MVP Race
+                    </div>
+                    {state.stats.mvpCandidates[0] && (
+                      <div className="tv-mvp-leader">
+                        Leader: <strong>{state.stats.mvpCandidates[0].name}</strong>
+                      </div>
+                    )}
+                  </div>
+                  <div className="tv-mvp-cards">
+                    {state.stats.mvpCandidates.slice(0, 5).map((p, i) => (
+                      <div className="tv-mvp-card" key={p.id}>
+                        <div className="tv-mvp-rank">{i + 1}</div>
+                        {i === 0 && <div className="tv-mvp-badge">MVP</div>}
+                        <div className="tv-mvp-name">{p.name}</div>
+                        <div className="tv-mvp-team">{p.team}</div>
+                        <div className="tv-mvp-pts">{Math.round(p.points)}</div>
+                        <div className="tv-mvp-pts-label">points</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="tv-overview-grid">
+                <div>
+                  <div className="tv-section-label"><Shield size={11} /> Points Table</div>
+                  <div className="tv-card">
+                    <table className="tv-standings-table">
+                      <thead>
+                        <tr>
+                          <th>Team</th>
+                          <th>P</th>
+                          <th>W</th>
+                          <th>L</th>
+                          <th>NRR</th>
+                          <th>Pts</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {standings.map((s, idx) => {
+                          const team = getTeam(s.teamId)
+                          const isUser = s.teamId === userTeamId
+                          return (
+                            <tr key={s.teamId} className={`tv-standings-row${isUser ? ' is-user' : ''}`}>
+                              <td style={{ display: 'flex', alignItems: 'center' }}>
+                                <span className={`tv-rank-num ${idx < 4 ? 'top' : ''}`}>{idx + 1}</span>
+                                <span className="tv-team-name">{team.name}</span>
+                                {isUser && <span className="tv-you-pill">YOU</span>}
+                              </td>
+                              <td style={{ fontWeight: 600, color: '#666' }}>{s.p}</td>
+                              <td style={{ fontWeight: 700, color: '#16a34a' }}>{s.w}</td>
+                              <td style={{ fontWeight: 700, color: '#dc2626' }}>{s.l}</td>
+                              <td className={s.nrr >= 0 ? 'tv-nrr-pos' : 'tv-nrr-neg'}>
+                                {s.nrr > 0 ? '+' : ''}{s.nrr.toFixed(3)}
+                              </td>
+                              <td className="tv-pts-val">{s.pts}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="tv-section-label"><Zap size={11} /> Upcoming Fixtures</div>
+                  <div className="tv-card">
+                    <div className="tv-fixture-list">
+                      {upcomingFixtures.slice(0, 5).map(f => {
+                        const home = getTeam(f.homeTeamId)
+                        const away = getTeam(f.awayTeamId)
+                        const isUserGame = f.homeTeamId === userTeamId || f.awayTeamId === userTeamId
+                        return (
+                          <div key={f.id} className={`tv-fixture-card${isUserGame ? ' is-user-game' : ''}`}>
+                            {isUserGame && (
+                              <div style={{ fontSize: '0.58rem', fontWeight: 900, color: '#111', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 9, display: 'flex', alignItems: 'center', gap: 5 }}>
+                                <Crown size={10} /> Your Match
+                              </div>
+                            )}
+                            {f.round && <div className="tv-fixture-round">{f.round}</div>}
+                            <div className="tv-fixture-matchup">
+                              <div className="tv-fixture-team">
+                                <div className="tv-fixture-team-short">{home.short}</div>
+                                <div className="tv-fixture-team-name">{home.name}</div>
+                              </div>
+                              <div className="tv-fixture-vs">VS</div>
+                              <div className="tv-fixture-team">
+                                <div className="tv-fixture-team-short">{away.short}</div>
+                                <div className="tv-fixture-team-name">{away.name}</div>
+                              </div>
+                            </div>
+                            <div className="tv-fixture-btns">
+                              <button className="tv-btn-play" onClick={() => onPlayMatch(f.id)}>
+                                <Play size={11} /> Play
+                              </button>
+                              <button className="tv-btn-sim" onClick={() => onSimulateMatch(f.id)}>
+                                <FastForward size={11} /> Simulate
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                      {upcomingFixtures.length === 0 && (
+                        <div style={{ padding: '36px', textAlign: 'center', color: '#ccc', fontWeight: 600, fontSize: '0.88rem' }}>
+                          All fixtures completed!
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ── STATS ── */}
+          {activeTab === 'stats' && state.stats && (
+            <>
+              <div className="tv-section-label"><Award size={11} /> Batting &amp; Bowling Leaders</div>
+              <div className="tv-stats-grid">
+                <div className="tv-card">
+                  <div className="tv-card-head">
+                    <div className="tv-card-title">
+                      <div className="tv-card-icon" style={{ background: '#fff7ed' }}>
+                        <Flame size={13} color="#f97316" />
+                      </div>
+                      Orange Cap · Top Scorers
+                    </div>
+                  </div>
+                  {state.stats.topScorers.slice(0, 5).map((p) => {
+                    const max = state.stats!.topScorers[0]?.runs || 1
+                    return (
+                      <div className="tv-stat-row" key={p.id}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="tv-stat-player-name">{p.name}</div>
+                          <div className="tv-stat-player-team">{p.team} · {p.matches} matches</div>
+                          <div className="tv-progress-bar">
+                            <div className="tv-progress-fill" style={{ width: `${(p.runs / max) * 100}%`, background: '#f97316' }} />
+                          </div>
+                        </div>
+                        <div className="tv-stat-big tv-orange">{p.runs}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <div className="tv-card">
+                  <div className="tv-card-head">
+                    <div className="tv-card-title">
+                      <div className="tv-card-icon" style={{ background: '#faf5ff' }}>
+                        <Target size={13} color="#a855f7" />
+                      </div>
+                      Purple Cap · Top Wickets
+                    </div>
+                  </div>
+                  {state.stats.topWicketTakers.slice(0, 5).map((p) => {
+                    const max = state.stats!.topWicketTakers[0]?.wickets || 1
+                    return (
+                      <div className="tv-stat-row" key={p.id}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="tv-stat-player-name">{p.name}</div>
+                          <div className="tv-stat-player-team">{p.team} · {p.matches} matches</div>
+                          <div className="tv-progress-bar">
+                            <div className="tv-progress-fill" style={{ width: `${(p.wickets / max) * 100}%`, background: '#a855f7' }} />
+                          </div>
+                        </div>
+                        <div className="tv-stat-big tv-purple">{p.wickets}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="tv-section-label"><TrendingUp size={11} /> Specialist Records</div>
+              <div className="tv-stats-grid-3">
+                <div className="tv-card">
+                  <div className="tv-card-head">
+                    <div className="tv-card-title">
+                      <div className="tv-card-icon" style={{ background: '#eff6ff' }}>
+                        <Zap size={13} color="#3b82f6" />
+                      </div>
+                      Most Sixes
+                    </div>
+                  </div>
+                  {state.stats.topSixHitters.slice(0, 3).map(p => (
+                    <div className="tv-stat-row" key={p.id}>
+                      <span className="tv-stat-player-name">{p.name}</span>
+                      <span style={{ fontWeight: 900, fontSize: '1.25rem', color: '#3b82f6' }}>{p.sixes}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="tv-card">
+                  <div className="tv-card-head">
+                    <div className="tv-card-title">
+                      <div className="tv-card-icon" style={{ background: '#f0fdf4' }}>
+                        <Wind size={13} color="#16a34a" />
+                      </div>
+                      Best Economy
+                    </div>
+                  </div>
+                  {state.stats.bestEconomies.slice(0, 3).map(p => (
+                    <div className="tv-stat-row" key={p.id}>
+                      <span className="tv-stat-player-name">{p.name}</span>
+                      <span style={{ fontWeight: 900, fontSize: '1.25rem', color: '#16a34a' }}>{p.economy.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="tv-card">
+                  <div className="tv-card-head">
+                    <div className="tv-card-title">
+                      <div className="tv-card-icon" style={{ background: '#fff7ed' }}>
+                        <TrendingUp size={13} color="#f97316" />
+                      </div>
+                      Best Strike Rate
+                    </div>
+                  </div>
+                  {state.stats.bestStrikeRates.slice(0, 3).map(p => (
+                    <div className="tv-stat-row" key={p.id}>
+                      <span className="tv-stat-player-name">{p.name}</span>
+                      <span style={{ fontWeight: 900, fontSize: '1.25rem', color: '#f97316' }}>{p.strikeRate.toFixed(1)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="tv-section-label"><Users size={11} /> All-Round Performers</div>
+              <div className="tv-card">
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="tv-allround-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Player</th>
+                        <th>Runs</th>
+                        <th>Balls</th>
+                        <th>SR</th>
+                        <th>Wkts</th>
+                        <th>Econ</th>
+                        <th>Pts</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {state.stats.mvpCandidates.slice(0, 10).map((p, idx) => {
+                        const s = state.stats!.playerStats[p.id]
+                        if (!s) return null
+                        return (
+                          <tr key={p.id}>
+                            <td style={{ color: '#ccc', fontWeight: 700, fontSize: '0.78rem' }}>{idx + 1}</td>
+                            <td>
+                              <div style={{ fontWeight: 800, color: '#111' }}>{p.name}</div>
+                              <div style={{ fontSize: '0.62rem', color: '#a855f7', fontWeight: 700 }}>{p.team}</div>
+                            </td>
+                            <td style={{ fontWeight: 700 }}>{s.runs}</td>
+                            <td style={{ color: '#bbb' }}>{s.balls}</td>
+                            <td style={{ fontWeight: 600 }}>{s.balls > 0 ? ((s.runs / s.balls) * 100).toFixed(1) : '0.0'}</td>
+                            <td style={{ fontWeight: 700, color: '#16a34a' }}>{s.wickets}</td>
+                            <td style={{ color: '#bbb' }}>{s.ballsBowled > 0 ? (s.runsConceded / (s.ballsBowled / 6)).toFixed(2) : '0.00'}</td>
+                            <td className="tv-allround-pts">{Math.round(p.points)}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ── FIXTURES ── */}
+          {activeTab === 'fixtures' && (
+            <>
+              {upcomingFixtures.length > 0 && (
+                <>
+                  <div className="tv-section-label"><Zap size={11} /> Upcoming ({upcomingFixtures.length})</div>
+                  <div className="tv-fixtures-grid">
+                    {upcomingFixtures.map(f => {
+                      const home = getTeam(f.homeTeamId)
+                      const away = getTeam(f.awayTeamId)
+                      const isUserGame = f.homeTeamId === userTeamId || f.awayTeamId === userTeamId
+                      return (
+                        <div key={f.id} className={`tv-fixture-card${isUserGame ? ' is-user-game' : ''}`}>
+                          {isUserGame && (
+                            <div style={{ fontSize: '0.58rem', fontWeight: 900, color: '#111', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 9, display: 'flex', alignItems: 'center', gap: 5 }}>
+                              <Crown size={10} /> Your Match
+                            </div>
+                          )}
+                          {f.round && <div className="tv-fixture-round">{f.round}</div>}
+                          <div className="tv-fixture-matchup">
+                            <div className="tv-fixture-team">
+                              <div className="tv-fixture-team-short">{home.short}</div>
+                              <div className="tv-fixture-team-name">{home.name}</div>
+                            </div>
+                            <div className="tv-fixture-vs">VS</div>
+                            <div className="tv-fixture-team">
+                              <div className="tv-fixture-team-short">{away.short}</div>
+                              <div className="tv-fixture-team-name">{away.name}</div>
+                            </div>
+                          </div>
+                          <div className="tv-fixture-btns">
+                            <button className="tv-btn-play" onClick={() => onPlayMatch(f.id)}>
+                              <Play size={11} /> Play
+                            </button>
+                            <button className="tv-btn-sim" onClick={() => onSimulateMatch(f.id)}>
+                              <FastForward size={11} /> Simulate
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+
+              {completedFixtures.length > 0 && (
+                <>
+                  <div className="tv-section-label"><Trophy size={11} /> Results ({completedFixtures.length})</div>
+                  <div>
+                    {completedFixtures.map(f => {
+                      const home = getTeam(f.homeTeamId)
+                      const away = getTeam(f.awayTeamId)
+                      const winner = f.winnerId ? getTeam(f.winnerId) : null
+                      return (
+                        <div key={f.id} className="tv-result-card">
+                          <div style={{ minWidth: 0 }}>
+                            {f.round && <div style={{ fontSize: '0.58rem', fontWeight: 800, color: '#ccc', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>{f.round}</div>}
+                            <div className="tv-result-teams">{home.short} vs {away.short}</div>
+                            <div className="tv-result-score">{home.name} · {away.name}</div>
+                          </div>
+                          {winner && <div className="tv-result-winner-tag">{winner.short} Won</div>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+
+              {upcomingFixtures.length === 0 && completedFixtures.length === 0 && (
+                <div style={{ padding: '60px', textAlign: 'center', color: '#ccc', fontWeight: 600 }}>
+                  No fixtures found.
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
