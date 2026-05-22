@@ -1,8 +1,9 @@
-import React from 'react'
-import { MatchState, Strategy } from '../state/types'
+import React, { useState } from 'react'
+import { MatchState, Strategy, Team } from '../state/types'
 import { Action } from '../state/reducer'
 import { OverHistory } from './OverHistory'
 import { CommentaryBox } from './CommentaryBox'
+import { DetailedScorecard } from './DetailedScorecard'
 
 interface Props {
   state: MatchState
@@ -11,6 +12,8 @@ interface Props {
 }
 
 export function MobileMatchUI({ state, dispatch, appDispatch }: Props) {
+  const [activeTab, setActiveTab] = useState<'match' | 'scorecard' | 'plan'>('match')
+  
   const inn = state.currentInnings === 1 ? state.innings1! : state.innings2!
   const isUserBatting = state.userTeamId === inn.battingTeamId
   const isUserBowling = state.userTeamId === inn.bowlingTeamId
@@ -56,7 +59,11 @@ export function MobileMatchUI({ state, dispatch, appDispatch }: Props) {
   }
 
   const ModeSelector = ({ pid, current, isOpponent, type }: { pid: string; current: Strategy; isOpponent: boolean; type: 'batsman' | 'bowler' }) => {
-    if (isOpponent) return <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>{current}</span>
+    if (isOpponent) return (
+      <div style={{ fontSize: '0.65rem', color: 'var(--primary)', fontWeight: '900', textTransform: 'uppercase', background: 'var(--primary-glow)', padding: '2px 6px', borderRadius: '4px' }}>
+        {current}
+      </div>
+    )
 
     return (
       <div style={{ display: 'flex', gap: '4px', background: '#f1f5f9', padding: '2px', borderRadius: '8px' }}>
@@ -89,6 +96,83 @@ export function MobileMatchUI({ state, dispatch, appDispatch }: Props) {
     )
   }
 
+  const TeamStrategySelector = () => {
+    const isBatting = isUserBatting
+    const currentStrategy = isBatting ? inn.battingStrategy : inn.bowlingStrategy
+    
+    return (
+      <div className="card" style={{ padding: '10px', marginBottom: '12px', background: 'var(--bg-alt)', border: '1px dashed var(--primary)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <span style={{ fontSize: '0.7rem', fontWeight: '900', color: 'var(--primary)', textTransform: 'uppercase' }}>
+            Team {isBatting ? 'Batting' : 'Bowling'} Intent (Universal)
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          {(['Defensive', 'Normal', 'Aggressive'] as Strategy[]).map(s => (
+            <button
+              key={s}
+              style={{
+                flex: 1, padding: '8px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: '900',
+                background: currentStrategy === s ? 'var(--primary)' : 'white',
+                color: currentStrategy === s ? 'white' : 'var(--text-muted)',
+                border: '1px solid var(--card-border)',
+                boxShadow: currentStrategy === s ? '0 4px 8px var(--primary-glow)' : 'none'
+              }}
+              onClick={() => dispatch({ type: 'CHANGE_STRATEGY', payload: { [isBatting ? 'batting' : 'bowling']: s } })}
+            >
+              {s.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  const BowlingPlanSection = () => {
+    if (!isUserBowling) return null
+    const bowlingTeam = state.homeTeam.id === inn.bowlingTeamId ? state.homeTeam : state.awayTeam
+    const availableBowlers = bowlingTeam.players.filter(p => p.role !== 'BAT' && p.role !== 'WK')
+    const currentOver = Math.floor(inn.balls / 6)
+    const remainingOvers = Array.from({ length: Math.min(5, state.config.overs - currentOver) }, (_, i) => currentOver + i)
+
+    return (
+      <div className="card" style={{ padding: '16px', background: '#f8fafc' }}>
+        <h4 style={{ margin: '0 0 12px 0', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '900', textTransform: 'uppercase' }}>Over Planning</h4>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+          {remainingOvers.map(overNum => {
+            const plannedId = inn.overPlan[overNum] || ''
+            return (
+              <div key={overNum} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: '800', textAlign: 'center' }}>OV {overNum + 1}</div>
+                <select
+                  value={plannedId || (overNum === currentOver ? inn.currentBowlerId : '')}
+                  onChange={(e) => dispatch({ type: 'UPDATE_OVER_PLAN', payload: { over: overNum, bowlerId: e.target.value } })}
+                  style={{
+                    background: overNum === currentOver ? 'var(--primary-glow)' : 'white',
+                    color: 'var(--text)',
+                    border: `1px solid ${overNum === currentOver ? 'var(--primary)' : 'var(--card-border)'}`,
+                    padding: '4px',
+                    borderRadius: '6px',
+                    fontSize: '0.65rem',
+                    fontWeight: '700',
+                    width: '100%'
+                  }}
+                >
+                  <option value="" disabled>Select</option>
+                  {availableBowlers.map(p => {
+                    const bowled = inn.bowlerOverCounts[p.id] || 0
+                    const maxOvers = Math.ceil(state.config.overs / 5)
+                    return <option key={p.id} value={p.id} disabled={bowled >= maxOvers}>{p.name.split(' ').pop()} ({bowled})</option>
+                  })}
+                </select>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="mobile-match-ui" style={{ 
       display: 'flex', 
@@ -98,125 +182,155 @@ export function MobileMatchUI({ state, dispatch, appDispatch }: Props) {
       overflow: 'hidden',
       background: 'linear-gradient(180deg, #1e40af 0%, #3b82f6 30%, #f1f5f9 100%)',
       padding: 'env(safe-area-inset-top) 0 0 0',
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      zIndex: 100
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100
     }}>
-      {/* Header Area - Team Info & Main Score */}
-      <div style={{ padding: '16px 20px 24px', color: 'white' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ width: '48px', height: '48px', background: home.color, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.8)', margin: '0 auto 4px', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}></div>
-            <div style={{ fontWeight: '900', fontSize: '0.8rem', textTransform: 'uppercase' }}>{home.short}</div>
-          </div>
-          
-          <div style={{ textAlign: 'center', flex: 1 }}>
-            <div style={{ fontSize: '2.5rem', fontWeight: '900', lineHeight: '1', textShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
-              {inn.runs}/{inn.wickets}
-            </div>
-            <div style={{ fontSize: '0.9rem', fontWeight: '700', opacity: 0.9, marginTop: '4px' }}>
-              {Math.floor(inn.balls / 6)}.{inn.balls % 6} <span style={{ opacity: 0.6 }}>OVERS</span>
+      {/* Header Area - Comprehensive Team Scores */}
+      <div style={{ padding: '12px 20px 20px', color: 'white' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ width: '32px', height: '32px', background: home.color, borderRadius: '50%', border: '2px solid white' }}></div>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontWeight: '900', fontSize: '0.7rem' }}>{home.short}</div>
+              <div style={{ fontWeight: '900', fontSize: '0.9rem' }}>
+                {i1?.battingTeamId === home.id ? `${i1.runs}/${i1.wickets}` : (i2?.battingTeamId === home.id ? `${i2.runs}/${i2.wickets}` : 'YTB')}
+              </div>
             </div>
           </div>
 
           <div style={{ textAlign: 'center' }}>
-            <div style={{ width: '48px', height: '48px', background: away.color, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.8)', margin: '0 auto 4px', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}></div>
-            <div style={{ fontWeight: '900', fontSize: '0.8rem', textTransform: 'uppercase' }}>{away.short}</div>
+            <div style={{ fontSize: '1.8rem', fontWeight: '900', lineHeight: '1' }}>
+              {inn.runs}/{inn.wickets}
+            </div>
+            <div style={{ fontSize: '0.75rem', fontWeight: '800', opacity: 0.8 }}>
+              OV {Math.floor(inn.balls / 6)}.{inn.balls % 6}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexDirection: 'row-reverse' }}>
+            <div style={{ width: '32px', height: '32px', background: away.color, borderRadius: '50%', border: '2px solid white' }}></div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontWeight: '900', fontSize: '0.7rem' }}>{away.short}</div>
+              <div style={{ fontWeight: '900', fontSize: '0.9rem' }}>
+                {i1?.battingTeamId === away.id ? `${i1.runs}/${i1.wickets}` : (i2?.battingTeamId === away.id ? `${i2.runs}/${i2.wickets}` : 'YTB')}
+              </div>
+            </div>
           </div>
         </div>
         
         <div style={{ 
           textAlign: 'center', background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', 
-          padding: '8px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: '800'
+          padding: '6px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: '800'
         }}>
           {getStatusText()}
         </div>
       </div>
 
-      {/* Main Action Area */}
+      {/* Main Container */}
       <div style={{ 
-        flex: 1, 
-        background: 'white', 
-        borderTopLeftRadius: '32px', 
-        borderTopRightRadius: '32px',
-        padding: '24px 16px',
-        display: 'flex',
-        flexDirection: 'column',
-        overflowY: 'hidden',
-        boxShadow: '0 -12px 40px rgba(0,0,0,0.15)'
+        flex: 1, background: 'white', borderTopLeftRadius: '32px', borderTopRightRadius: '32px',
+        padding: '16px', display: 'flex', flexDirection: 'column', overflowY: 'hidden', boxShadow: '0 -12px 40px rgba(0,0,0,0.15)'
       }}>
-        {/* Central Button */}
-        <button 
-          onClick={() => dispatch({ type: 'RUN_OVER' })}
-          className="primary" 
-          style={{ 
-            width: '100%', padding: '24px', borderRadius: '20px', fontSize: '1.5rem', 
-            fontWeight: '900', marginBottom: '24px', boxShadow: '0 12px 24px var(--primary-glow)',
-            textTransform: 'uppercase', letterSpacing: '0.05em'
-          }}
-          disabled={state.matchCompleted || state.waitingForBatsman}
-        >
-          {inn.balls % 6 === 0 && inn.balls > 0 ? 'NEXT OVER' : 'CONTINUE OVER'}
-        </button>
+        
+        {/* Tab Navigation */}
+        <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '12px', marginBottom: '16px' }}>
+          {['match', 'scorecard', 'plan'].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab as any)}
+              style={{
+                flex: 1, padding: '10px', borderRadius: '8px', border: 'none',
+                background: activeTab === tab ? 'white' : 'transparent',
+                color: activeTab === tab ? 'var(--primary)' : '#64748b',
+                fontWeight: '900', fontSize: '0.75rem', textTransform: 'uppercase',
+                boxShadow: activeTab === tab ? '0 2px 8px rgba(0,0,0,0.05)' : 'none'
+              }}
+            >
+              {tab === 'match' ? 'Live' : tab === 'scorecard' ? 'Scorecard' : 'Plan'}
+            </button>
+          ))}
+        </div>
 
-        {/* Player Stats & Strategy */}
-        <div style={{ display: 'grid', gap: '12px', marginBottom: '20px' }}>
-          {/* Batsmen Row */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            {striker && (
-              <div className="card" style={{ padding: '12px', background: 'var(--primary-glow)', border: '1px solid var(--primary)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontWeight: '900', fontSize: '0.85rem', color: 'var(--primary)' }}>{striker.name.split(' ').pop()}*</span>
-                  <span style={{ fontWeight: '900', fontSize: '1rem' }}>{getBatStats(striker.id).r}</span>
-                </div>
-                <ModeSelector pid={striker.id} current={inn.strikerStrategy || 'Normal'} isOpponent={!isUserBatting} type="batsman" />
-              </div>
-            )}
-            {nonStriker && (
-              <div className="card" style={{ padding: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontWeight: '800', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{nonStriker.name.split(' ').pop()}</span>
-                  <span style={{ fontWeight: '800', fontSize: '1rem' }}>{getBatStats(nonStriker.id).r}</span>
-                </div>
-                <ModeSelector pid={nonStriker.id} current={inn.nonStrikerStrategy || 'Normal'} isOpponent={!isUserBatting} type="batsman" />
-              </div>
-            )}
-          </div>
+        {activeTab === 'match' && (
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'hidden' }}>
+            {/* Action Button */}
+            <button 
+              onClick={() => dispatch({ type: 'RUN_OVER' })}
+              className="primary" 
+              style={{ width: '100%', padding: '20px', borderRadius: '16px', fontSize: '1.3rem', fontWeight: '900', marginBottom: '16px', textTransform: 'uppercase' }}
+              disabled={state.matchCompleted || state.waitingForBatsman}
+            >
+              {inn.balls % 6 === 0 && inn.balls > 0 ? 'NEXT OVER' : 'CONTINUE OVER'}
+            </button>
 
-          {/* Bowler Row */}
-          {bowler && (
-            <div className="card" style={{ padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px' }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '800', marginBottom: '4px' }}>CURRENT BOWLER</div>
-                <div style={{ fontWeight: '900', fontSize: '1rem' }}>{bowler.name}</div>
-                <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--danger)', marginTop: '2px' }}>
-                  {getBowlStats(bowler.id).w}-{getBowlStats(bowler.id).r} <span style={{ opacity: 0.5, fontSize: '0.7rem' }}>({Math.floor(getBowlStats(bowler.id).b/6)}.{getBowlStats(bowler.id).b%6})</span>
-                </div>
+            {/* Universal Team Strategy */}
+            <TeamStrategySelector />
+
+            {/* Players Info */}
+            <div style={{ display: 'grid', gap: '8px', marginBottom: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                {striker && (
+                  <div className="card" style={{ padding: '10px', background: 'var(--primary-glow)', border: '1px solid var(--primary)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontWeight: '900', fontSize: '0.8rem', color: 'var(--primary)' }}>{striker.name.split(' ').pop()}*</span>
+                      <span style={{ fontWeight: '900', fontSize: '0.9rem' }}>{getBatStats(striker.id).r}({getBatStats(striker.id).b})</span>
+                    </div>
+                    <ModeSelector pid={striker.id} current={inn.strikerStrategy || 'Normal'} isOpponent={!isUserBatting} type="batsman" />
+                  </div>
+                )}
+                {nonStriker && (
+                  <div className="card" style={{ padding: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontWeight: '800', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{nonStriker.name.split(' ').pop()}</span>
+                      <span style={{ fontWeight: '800', fontSize: '0.9rem' }}>{getBatStats(nonStriker.id).r}({getBatStats(nonStriker.id).b})</span>
+                    </div>
+                    <ModeSelector pid={nonStriker.id} current={inn.nonStrikerStrategy || 'Normal'} isOpponent={!isUserBatting} type="batsman" />
+                  </div>
+                )}
               </div>
-              <div style={{ width: '120px' }}>
-                <ModeSelector pid={bowler.id} current={inn.bowlingStrategy || 'Normal'} isOpponent={!isUserBowling} type="bowler" />
+              {bowler && (
+                <div className="card" style={{ padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: '900', fontSize: '0.85rem' }}>{bowler.name}</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--danger)' }}>
+                      {getBowlStats(bowler.id).w}-{getBowlStats(bowler.id).r} ({Math.floor(getBowlStats(bowler.id).b/6)}.{getBowlStats(bowler.id).b%6})
+                    </div>
+                  </div>
+                  <div style={{ width: '100px' }}>
+                    <ModeSelector pid={bowler.id} current={inn.bowlingStrategy || 'Normal'} isOpponent={!isUserBowling} type="bowler" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Commentary & Over History */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0 }}>
+              <div className="card" style={{ flex: 1, padding: '12px', background: '#f8fafc', overflowY: 'auto' }}>
+                 <CommentaryBox state={state} />
+              </div>
+              <div className="card" style={{ padding: '8px', background: '#f8fafc' }}>
+                <OverHistory state={state} />
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Info Tabs / Content */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px', minHeight: 0 }}>
-          <div className="card" style={{ flex: 1, padding: '16px', background: '#f8fafc', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-             <h4 style={{ margin: '0 0 12px 0', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '900', textTransform: 'uppercase' }}>Recent Commentary</h4>
-             <div style={{ flex: 1, overflowY: 'auto' }}>
-                <CommentaryBox state={state} />
-             </div>
+        {activeTab === 'scorecard' && (
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            <DetailedScorecard state={state} />
           </div>
-          
-          <div className="card" style={{ padding: '12px', background: '#f8fafc' }}>
-            <h4 style={{ margin: '0 0 8px 0', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '900', textTransform: 'uppercase' }}>Over History</h4>
-            <OverHistory state={state} />
+        )}
+
+        {activeTab === 'plan' && (
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {isUserBowling ? (
+              <BowlingPlanSection />
+            ) : (
+              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                Planning is only available when your team is bowling.
+              </div>
+            )}
           </div>
-        </div>
+        )}
       </div>
     </div>
   )
