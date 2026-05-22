@@ -480,6 +480,7 @@ export function tournamentReducer(state: TournamentState | null, action: Tournam
                     strategy: 'Normal',
                     bowlingStrategy: 'Normal',
                     pitch: 'Balanced',
+                    boundarySize: 'Normal',
                     stadium: 'Generic'
                 }
             })

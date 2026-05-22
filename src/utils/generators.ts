@@ -48,6 +48,15 @@ export function generateRandomPlayer(id: string, role: Role): Player {
         consistency: randomInt(60, 95),
         power: randomInt(50, 98),
         control: randomInt(60, 95),
+        timing: randomInt(60, 95),
+        temperament: randomInt(50, 90),
+        strikeRotation: randomInt(60, 95),
+        spinPlay: randomInt(50, 95),
+        pacePlay: randomInt(50, 95),
+        yorkerSkill: role === 'BOWL' ? randomInt(60, 95) : randomInt(10, 40),
+        variationSkill: role === 'BOWL' ? randomInt(60, 95) : randomInt(10, 50),
+        bouncerSkill: role === 'BOWL' ? randomInt(50, 90) : randomInt(5, 30),
+        pressureHandling: randomInt(50, 90),
         value: randomInt(20, 150) / 10, // 2.0 to 15.0 Cr
         career: {
             matches: 0, runs: 0, balls: 0, wickets: 0, ballsBowled: 0, runsConceded: 0,
