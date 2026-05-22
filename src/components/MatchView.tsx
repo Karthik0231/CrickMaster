@@ -1,11 +1,11 @@
 import React, { useState } from 'react'
-import { MatchState } from '../state/types'
-import { Scoreboard } from './Scoreboard'
-import { OverHistory } from './OverHistory'
-import { CommentaryBox } from './CommentaryBox'
-import { Controls } from './Controls'
-import { DetailedScorecard } from './DetailedScorecard'
+import { MatchState, Team, Player, Strategy } from '../state/types'
 import { Action } from '../state/reducer'
+import { Scoreboard } from './Scoreboard'
+import { Controls } from './Controls'
+import { CommentaryBox } from './CommentaryBox'
+import { DetailedScorecard } from './DetailedScorecard'
+import { Trophy, Play, Clipboard, BarChart2, Info, User, ArrowLeft } from 'lucide-react'
 
 interface Props {
   state: MatchState
@@ -14,8 +14,11 @@ interface Props {
   onExit: () => void
 }
 
+type TabMode = 'game' | 'scorecard' | 'stats' | 'info'
+
 export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
-  const [viewMode, setViewMode] = useState<'live' | 'scorecard'>('live')
+  const [activeTab, setActiveTab] = useState<TabMode>('game')
+  const [selectedOpeners, setSelectedOpeners] = useState<string[]>([])
   const inn = state.currentInnings === 1 ? state.innings1 : state.innings2
   const isUserBatting = state.userTeamId === inn?.battingTeamId
 
@@ -27,55 +30,53 @@ export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
     if (state.selectionStep !== 'OPENERS' || !inn || !isUserBatting) return null
 
     const batTeam = state.homeTeam.id === inn.battingTeamId ? state.homeTeam : state.awayTeam
-    const [selected, setSelected] = useState<string[]>([])
 
     const togglePlayer = (id: string) => {
-      if (selected.includes(id)) setSelected(selected.filter(i => i !== id))
-      else if (selected.length < 2) setSelected([...selected, id])
+      if (selectedOpeners.includes(id)) setSelectedOpeners(selectedOpeners.filter(i => i !== id))
+      else if (selectedOpeners.length < 2) setSelectedOpeners([...selectedOpeners, id])
     }
 
     return (
       <div className="modal-overlay" style={{
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(16px)',
-        zIndex: 1300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(16px)',
+        zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
       }}>
-        <div className="card" style={{ maxWidth: '500px', width: '100%', padding: '32px', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--primary-glow)' }}>
-          <h2 style={{ marginBottom: '8px', fontWeight: '900', color: 'var(--primary)' }}>SELECT OPENERS</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '32px', fontWeight: '600' }}>Pick your striker and non-striker to start the innings.</p>
+        <div className="card" style={{ maxWidth: '500px', width: '100%', padding: '24px', boxShadow: 'var(--shadow-lg)' }}>
+          <h2 style={{ marginBottom: '8px', fontWeight: '900', color: 'var(--primary)', fontSize: '1.2rem' }}>SELECT OPENERS</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.85rem' }}>Pick your striker and non-striker to start the innings.</p>
 
-          <div style={{ display: 'grid', gap: '10px', maxHeight: '400px', overflowY: 'auto', marginBottom: '32px', padding: '4px' }}>
+          <div style={{ display: 'grid', gap: '8px', maxHeight: '50vh', overflowY: 'auto', marginBottom: '24px' }}>
             {batTeam.players.map(p => {
-              const isSelected = selected.includes(p.id)
+              const isSelected = selectedOpeners.includes(p.id)
               return (
-                <button
+                <div
                   key={p.id}
-                  className={isSelected ? 'primary' : ''}
-                  style={{ 
-                    justifyContent: 'space-between', 
-                    padding: '16px',
-                    background: isSelected ? 'var(--primary)' : 'var(--bg-alt)',
-                    border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--card-border)'}`
-                  }}
                   onClick={() => togglePlayer(p.id)}
+                  style={{ 
+                    display: 'flex', justifyContent: 'space-between', padding: '12px',
+                    background: isSelected ? 'var(--primary-glow)' : 'var(--bg)',
+                    border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--card-border)'}`,
+                    borderRadius: '10px', cursor: 'pointer'
+                  }}
                 >
-                  <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontWeight: '800' }}>{p.name}</div>
-                    <div style={{ fontSize: '0.7rem', opacity: 0.7 }}>{p.role} • Rating: {p.battingRating}</div>
+                  <div>
+                    <div style={{ fontWeight: '800', fontSize: '0.9rem' }}>{p.name}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{p.role} • Rating: {p.battingRating}</div>
                   </div>
-                  {isSelected && <span style={{ fontSize: '1.2rem' }}>✓</span>}
-                </button>
+                  {isSelected && <span style={{ color: 'var(--primary)', fontWeight: '900' }}>✓</span>}
+                </div>
               )
             })}
           </div>
 
           <button
             className="primary"
-            style={{ width: '100%', padding: '16px' }}
-            disabled={selected.length !== 2}
-            onClick={() => dispatch({ type: 'SELECT_OPENERS', payload: { strikerId: selected[0], nonStrikerId: selected[1] } })}
+            style={{ width: '100%', padding: '14px', borderRadius: '10px', background: 'var(--primary)', color: 'white', border: 'none', fontWeight: '800' }}
+            disabled={selectedOpeners.length !== 2}
+            onClick={() => dispatch({ type: 'SELECT_OPENERS', payload: { strikerId: selectedOpeners[0], nonStrikerId: selectedOpeners[1] } })}
           >
-            START INNINGS ({selected.length}/2)
+            START INNINGS ({selectedOpeners.length}/2)
           </button>
         </div>
       </div>
@@ -84,24 +85,23 @@ export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
 
   const renderTossModal = () => {
     if (state.tossStep === 'COMPLETED' || !state.tossStep) return null
-
     const isWinner = state.toss?.winnerTeamId === state.userTeamId
 
     return (
       <div className="modal-overlay" style={{
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(16px)',
-        zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        background: 'rgba(0, 66, 165, 0.95)', backdropFilter: 'blur(20px)',
+        zIndex: 1900, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
       }}>
-        <div className="card" style={{ maxWidth: '450px', width: '100%', textAlign: 'center', padding: '40px', boxShadow: 'var(--shadow-lg)', border: '2px solid var(--primary)' }}>
-          <div style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: '900', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '16px' }}>THE TOSS</div>
+        <div className="card" style={{ maxWidth: '400px', width: '100%', textAlign: 'center', padding: '32px', background: 'white' }}>
+          <div style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: '900', letterSpacing: '0.2em', marginBottom: '12px' }}>THE TOSS</div>
           
           {state.tossStep === 'PICK_SIDE' ? (
             <>
-              <h2 style={{ marginBottom: '32px', fontWeight: '900' }}>Heads or Tails?</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                <button className="primary" style={{ padding: '24px', fontSize: '1.2rem' }} onClick={() => dispatch({ type: 'PERFORM_TOSS', payload: 'Heads' })}>HEADS</button>
-                <button className="primary" style={{ padding: '24px', fontSize: '1.2rem' }} onClick={() => dispatch({ type: 'PERFORM_TOSS', payload: 'Tails' })}>TAILS</button>
+              <h2 style={{ marginBottom: '24px', fontWeight: '900' }}>Heads or Tails?</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <button style={{ padding: '20px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: '800' }} onClick={() => dispatch({ type: 'PERFORM_TOSS', payload: 'Heads' })}>HEADS</button>
+                <button style={{ padding: '20px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: '800' }} onClick={() => dispatch({ type: 'PERFORM_TOSS', payload: 'Tails' })}>TAILS</button>
               </div>
             </>
           ) : (
@@ -109,18 +109,18 @@ export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
               {isWinner ? (
                 <>
                   <h2 style={{ color: 'var(--success)', marginBottom: '8px', fontWeight: '900' }}>YOU WON THE TOSS!</h2>
-                  <p style={{ color: 'var(--text-muted)', marginBottom: '32px', fontWeight: '600' }}>What would you like to do first?</p>
-                  <div style={{ display: 'grid', gap: '16px' }}>
-                    <button className="primary" style={{ padding: '20px', fontSize: '1.1rem' }} onClick={() => dispatch({ type: 'CHOOSE_TOSS_DECISION', payload: 'Bat' })}>BAT FIRST</button>
-                    <button className="secondary" style={{ padding: '20px', fontSize: '1.1rem' }} onClick={() => dispatch({ type: 'CHOOSE_TOSS_DECISION', payload: 'Bowl' })}>BOWL FIRST</button>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '24px' }}>What would you like to do first?</p>
+                  <div style={{ display: 'grid', gap: '12px' }}>
+                    <button style={{ padding: '16px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: '800' }} onClick={() => dispatch({ type: 'CHOOSE_TOSS_DECISION', payload: 'Bat' })}>BAT FIRST</button>
+                    <button style={{ padding: '16px', background: 'var(--secondary)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: '800' }} onClick={() => dispatch({ type: 'CHOOSE_TOSS_DECISION', payload: 'Bowl' })}>BOWL FIRST</button>
                   </div>
                 </>
               ) : (
                 <>
                   <h2 style={{ color: 'var(--danger)', marginBottom: '8px', fontWeight: '900' }}>OPPONENT WON THE TOSS</h2>
-                  <p style={{ color: 'var(--text-muted)', marginBottom: '32px', fontWeight: '600' }}>They have decided to {state.toss?.decision.toLowerCase()} first.</p>
-                  <button className="primary" style={{ width: '100%', padding: '20px' }} onClick={() => dispatch({ type: 'CHOOSE_TOSS_DECISION', payload: state.toss?.decision as any })}>
-                    START MATCH
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '24px' }}>They decided to {state.toss?.decision.toLowerCase()} first.</p>
+                  <button style={{ width: '100%', padding: '16px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: '800' }} onClick={() => dispatch({ type: 'CHOOSE_TOSS_DECISION', payload: state.toss?.decision as any })}>
+                    CONTINUE
                   </button>
                 </>
               )}
@@ -140,41 +140,33 @@ export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
     return (
       <div className="modal-overlay" style={{
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(16px)',
-        zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(16px)',
+        zIndex: 1800, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
       }}>
-        <div className="card" style={{ maxWidth: '400px', width: '100%', textAlign: 'center', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--primary)' }}>
+        <div className="card" style={{ maxWidth: '400px', width: '100%', textAlign: 'center' }}>
           <h2 style={{ color: 'var(--danger)', marginBottom: '8px', fontWeight: '900' }}>WICKET!</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontWeight: '500' }}>Select next batsman to continue the innings</p>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '20px', fontSize: '0.85rem' }}>Select next batsman to continue</p>
 
           <button
-            className="primary"
-            style={{ width: '100%', padding: '16px', marginBottom: '16px', fontSize: '1rem', fontWeight: '700' }}
+            style={{ width: '100%', padding: '14px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '10px', marginBottom: '16px', fontWeight: '800' }}
             onClick={() => dispatch({ type: 'AUTO_SELECT_BATSMAN' })}
           >
             NEXT IN LINEUP
           </button>
 
-          <div style={{ marginBottom: '12px', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
-            Or Select Manually:
-          </div>
-          <div style={{ display: 'grid', gap: '10px' }}>
-            {remaining.slice(0, 5).map(p => (
-              <button
+          <div style={{ display: 'grid', gap: '8px' }}>
+            {remaining.slice(0, 4).map(p => (
+              <div
                 key={p.id}
-                className=""
-                style={{ 
-                  justifyContent: 'space-between', 
-                  padding: '16px', 
-                  fontWeight: '700',
-                  background: 'var(--bg-alt)',
-                  border: '1px solid var(--card-border)'
-                }}
                 onClick={() => handleBatsmanSelect(p.id)}
+                style={{ 
+                  display: 'flex', justifyContent: 'space-between', padding: '12px',
+                  background: 'var(--bg)', border: '1px solid var(--card-border)', borderRadius: '10px', cursor: 'pointer'
+                }}
               >
-                <span>{p.name} <span style={{ fontSize: '0.7rem', opacity: 0.6, fontWeight: '500' }}>({p.role})</span></span>
-                <span style={{ color: 'var(--primary)' }}>{p.battingRating}</span>
-              </button>
+                <span style={{ fontWeight: '700' }}>{p.name}</span>
+                <span style={{ color: 'var(--primary)', fontWeight: '800' }}>{p.battingRating}</span>
+              </div>
             ))}
           </div>
         </div>
@@ -187,26 +179,27 @@ export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
     return (
       <div className="modal-overlay" style={{
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(16px)',
-        zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        background: 'rgba(0, 66, 165, 0.98)', backdropFilter: 'blur(20px)',
+        zIndex: 2100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
       }}>
-        <div className="card" style={{ maxWidth: '600px', width: '100%', textAlign: 'center', padding: '48px', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--primary)' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: '900', color: 'var(--primary)', marginBottom: '8px' }}>MATCH FINISHED</h1>
-          <p style={{ fontSize: '1.2rem', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '32px' }}>{state.victoryMargin}</p>
+        <div className="card" style={{ maxWidth: '500px', width: '100%', textAlign: 'center', padding: '32px' }}>
+          <Trophy size={64} color="var(--accent)" style={{ marginBottom: '16px' }} />
+          <h1 style={{ fontSize: '1.8rem', fontWeight: '900', color: 'var(--primary)', marginBottom: '8px' }}>MATCH FINISHED</h1>
+          <p style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '32px' }}>{state.victoryMargin}</p>
 
-          <div style={{ display: 'grid', gap: '16px' }}>
+          <div style={{ display: 'grid', gap: '12px' }}>
             <button
               className="primary"
-              style={{ padding: '20px', fontSize: '1.1rem' }}
+              style={{ width: '100%', padding: '16px', borderRadius: '12px', fontWeight: '800' }}
               onClick={onExit}
             >
               RETURN TO DASHBOARD
             </button>
             <button
-              style={{ padding: '16px', background: 'var(--bg-alt)', color: 'var(--text)', border: '1px solid var(--card-border)' }}
-              onClick={() => setViewMode('scorecard')}
+              style={{ padding: '14px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--card-border)', borderRadius: '12px', fontWeight: '700' }}
+              onClick={() => setActiveTab('scorecard')}
             >
-              VIEW DETAILED SCORECARD
+              VIEW SCORECARD
             </button>
           </div>
         </div>
@@ -215,56 +208,85 @@ export function MatchView({ state, dispatch, appDispatch, onExit }: Props) {
   }
 
   return (
-    <div className="match-view-container" style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px 16px' }}>
-      {renderTossModal()}
+    <div className="match-container-fixed">
       {renderSelectionModal()}
+      {renderTossModal()}
       {renderBatsmanModal()}
       {renderMatchFinished()}
 
-      <div className="match-nav" style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        marginBottom: '32px', background: 'white',
-        padding: '16px 24px', borderRadius: '16px', border: '1px solid var(--card-border)',
-        boxShadow: 'var(--shadow-sm)'
-      }}>
-        <button className="secondary" onClick={onExit} style={{ padding: '10px 20px', fontWeight: '700' }}>← BACK</button>
-
+      {/* Fixed Header */}
+      <div className="match-header-fixed">
+        <button onClick={onExit} style={{ background: 'none', border: 'none', color: 'white', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700' }}>
+          <ArrowLeft size={20} /> <span className="mobile-hide">QUIT</span>
+        </button>
         <div style={{ textAlign: 'center' }}>
-          <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '900', letterSpacing: '-0.5px' }}>
-            {state.homeTeam.short} <span style={{ color: 'var(--text-muted)', fontWeight: '400', margin: '0 8px' }}>VS</span> {state.awayTeam.short}
-          </h2>
-          <div style={{ fontSize: '0.75rem', color: 'var(--primary)', letterSpacing: '0.15em', marginTop: '4px', fontWeight: '800', textTransform: 'uppercase' }}>
-            {state.config.format} CRICKET • {state.config.overs} OVERS
-          </div>
+          <div style={{ fontSize: '0.65rem', fontWeight: '800', opacity: 0.8, textTransform: 'uppercase' }}>{state.config.stadium}</div>
+          <div style={{ fontSize: '0.85rem', fontWeight: '900' }}>{state.homeTeam.short} vs {state.awayTeam.short}</div>
         </div>
-
-        <div className="tabs" style={{ marginBottom: 0, borderBottom: 'none', paddingBottom: 0 }}>
-          <button className={viewMode === 'live' ? 'active' : ''} style={{ fontSize: '0.85rem', fontWeight: '800' }} onClick={() => setViewMode('live')}>LIVE</button>
-          <button className={viewMode === 'scorecard' ? 'active' : ''} style={{ fontSize: '0.85rem', fontWeight: '800' }} onClick={() => setViewMode('scorecard')}>SCORECARD</button>
-        </div>
+        <div style={{ width: '40px' }}></div> {/* Spacer */}
       </div>
 
-      {viewMode === 'live' && inn ? (
-        <div className="match-layout grid-2" style={{ gridTemplateColumns: '1.2fr 0.8fr', gap: '32px' }}>
-          <div className="main-match-col" style={{ display: 'grid', gap: '32px', alignContent: 'start' }}>
+      {/* Tab Navigation */}
+      <div className="match-tabs-fixed">
+        <button className={`tab-btn-fixed ${activeTab === 'game' ? 'active' : ''}`} onClick={() => setActiveTab('game')}>
+          <Play /> GAME
+        </button>
+        <button className={`tab-btn-fixed ${activeTab === 'scorecard' ? 'active' : ''}`} onClick={() => setActiveTab('scorecard')}>
+          <Clipboard /> SCORECARD
+        </button>
+        <button className={`tab-btn-fixed ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>
+          <BarChart2 /> STATS
+        </button>
+        <button className={`tab-btn-fixed ${activeTab === 'info' ? 'active' : ''}`} onClick={() => setActiveTab('info')}>
+          <Info /> INFO
+        </button>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="match-content-fixed">
+        {activeTab === 'game' && inn && (
+          <div style={{ display: 'grid', gap: '16px' }}>
             <Scoreboard state={state} matchDispatch={dispatch} appDispatch={appDispatch} />
-            <Controls state={state} dispatch={dispatch} />
-          </div>
-          <div className="side-match-col" style={{ display: 'grid', gap: '32px', gridTemplateRows: 'auto 1fr' }}>
-            <div className="card" style={{ padding: '24px', background: 'white' }}>
-              <h4 style={{ margin: '0 0 16px 0', textTransform: 'uppercase', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '800', letterSpacing: '0.1em' }}>Over History</h4>
-              <OverHistory state={state} />
-            </div>
             <CommentaryBox state={state} />
           </div>
-        </div>
-      ) : viewMode === 'scorecard' ? (
-        <div className="scorecard-container">
+        )}
+
+        {activeTab === 'scorecard' && (
           <DetailedScorecard state={state} />
-        </div>
-      ) : (
-        <div style={{ textAlign: 'center', padding: '100px', color: 'var(--text-muted)' }}>
-          Waiting for toss...
+        )}
+
+        {activeTab === 'stats' && (
+          <div className="card">
+            <h3 style={{ fontWeight: '900', marginBottom: '16px' }}>Match Stats</h3>
+            <p style={{ color: 'var(--text-muted)' }}>Detailed statistics will be available soon.</p>
+          </div>
+        )}
+
+        {activeTab === 'info' && (
+          <div className="card">
+            <h3 style={{ fontWeight: '900', marginBottom: '16px' }}>Match Information</h3>
+            <div style={{ display: 'grid', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--card-border)', paddingBottom: '8px' }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: '600' }}>Format</span>
+                <span style={{ fontWeight: '800' }}>{state.config.format} ({state.config.overs} Overs)</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--card-border)', paddingBottom: '8px' }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: '600' }}>Pitch</span>
+                <span style={{ fontWeight: '800' }}>{state.config.pitch}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--card-border)', paddingBottom: '8px' }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: '600' }}>Boundaries</span>
+                <span style={{ fontWeight: '800' }}>{state.config.boundarySize}</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Fixed Bottom Controls for Game Tab */}
+      {activeTab === 'game' && !state.matchCompleted && (
+        <div className="fixed-bottom-bar">
+          <Controls state={state} dispatch={dispatch} />
         </div>
       )}
     </div>

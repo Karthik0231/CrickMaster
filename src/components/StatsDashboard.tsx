@@ -22,25 +22,26 @@ export function StatsDashboard({ state }: Props) {
                             <thead>
                                 <tr>
                                     <th>Team</th>
-                                    <th>Matches</th>
-                                    <th>Wins</th>
-                                    <th>Losses</th>
-                                    <th>Titles</th>
-                                    <th>Win %</th>
+                                    <th>P</th>
+                                    <th className="win">W</th>
+                                    <th className="loss">L</th>
+                                    <th>T</th>
+                                    <th>%</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {sortedTeams.map(([id, stats]) => {
-                                    const teamName = state.teams.find(t => t.id === id)?.name || id;
-                                    const winRate = stats.matches > 0 ? (stats.wins / stats.matches * 100).toFixed(1) : '0';
+                                    const team = state.teams.find(t => t.id === id);
+                                    const teamName = team?.short || id;
+                                    const winRate = stats.matches > 0 ? (stats.wins / stats.matches * 100).toFixed(0) : '0';
                                     return (
                                         <tr key={id}>
-                                            <td className="bold">{teamName}</td>
+                                            <td style={{ fontWeight: '800' }}>{teamName}</td>
                                             <td>{stats.matches}</td>
-                                            <td className="win">{stats.wins}</td>
-                                            <td className="loss">{stats.losses}</td>
+                                            <td className="win" style={{ fontWeight: '700', color: 'var(--success)' }}>{stats.wins}</td>
+                                            <td className="loss" style={{ fontWeight: '700', color: 'var(--danger)' }}>{stats.losses}</td>
                                             <td>{stats.titles}</td>
-                                            <td>{winRate}%</td>
+                                            <td style={{ fontWeight: '800', color: 'var(--primary)' }}>{winRate}%</td>
                                         </tr>
                                     );
                                 })}

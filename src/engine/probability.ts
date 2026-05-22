@@ -33,13 +33,13 @@ export function outcomeRuns(outcome: Outcome) {
 
 function baseWeights(): Weights {
   return {
-    '0': 35,
-    '1': 25,
+    '0': 32,
+    '1': 26,
     '2': 8,
     '3': 1,
-    '4': 10,
-    '6': 4,
-    'W': 1.5,
+    '4': 11,
+    '6': 5,
+    'W': 2.4, // Increased from 1.5 to make wickets more common
     'Wd': 1.5,
     'Nb': 0.5,
   }
@@ -114,11 +114,17 @@ function chooseShotIntent(ctx: BallContext, delivery: DeliveryPlan): ShotIntent 
 }
 
 // --- STEP 3: EXECUTION QUALITY ---
-function evaluateExecution(skill: number, intent: string, pressure: number): ExecutionQuality {
-  let score = skill + (Math.random() * 40 - 20) - (pressure / 4)
-  if (score > 85) return 'Perfect'
-  if (score > 65) return 'Good'
-  if (score > 40) return 'Average'
+function evaluateExecution(skill: number, intent: string, pressure: number, attributes: { composure: number }): ExecutionQuality {
+  // Use composure/pressure handling to mitigate pressure impact
+  const pressureImpact = Math.max(0, pressure - attributes.composure) / 3
+  
+  // Randomness is higher for lower skill players, but they can still have "Perfect" moments
+  const randomness = (Math.random() * 50 - 25)
+  let score = skill + randomness - pressureImpact
+  
+  if (score > 82) return 'Perfect'
+  if (score > 62) return 'Good'
+  if (score > 35) return 'Average'
   return 'Poor'
 }
 
@@ -131,86 +137,80 @@ export function computeWeights(ctx: BallContext): Weights {
   const shot = chooseShotIntent(ctx, delivery)
   
   // 2. Evaluate Execution
-  const bowlerExec = evaluateExecution(bowler.bowlingRating, delivery, pressure)
-  const batterExec = evaluateExecution(batsman.battingRating, shot, pressure)
+  // Incorporate new attributes: temperament for batsman, pressureHandling for bowler
+  const bowlerExec = evaluateExecution(bowler.bowlingRating, delivery, pressure, { composure: bowler.pressureHandling || 50 })
+  const batterExec = evaluateExecution(batsman.battingRating, shot, pressure, { composure: batsman.temperament || 50 })
   
   // 3. Apply Modifiers based on Matchup
   
   // Dot Ball Pressure Logic: After 3 dots, batsman becomes restless (Higher Aggression/Risk)
   if (dotsInARow >= 3) {
-    w['4'] *= 1.5
-    w['6'] *= 1.8
-    w['W'] *= 1.4 // Higher risk of throwing it away
+    w['4'] *= 1.4
+    w['6'] *= 1.6
+    w['W'] *= 1.6 // Increased risk significantly
     w['0'] *= 0.7
   }
 
   // Set Status Rules
   if (batsmanBallsFaced <= 7) { // New
-    w['W'] *= 1.8
-    w['0'] *= 1.4
+    w['W'] *= 2.2 // Even more vulnerable when new
+    w['0'] *= 1.3
     w['4'] *= 0.6
     w['6'] *= 0.4
   } else if (batsmanBallsFaced >= 20) { // Set
-    w['W'] *= 0.6
+    w['W'] *= 0.5 // Harder to get out when set
     w['0'] *= 0.7
-    w['4'] *= 1.4
-    w['6'] *= 1.5
-    w['1'] *= 1.2 // Better rotation
+    w['4'] *= 1.5
+    w['6'] *= 1.6
+    w['1'] *= 1.2
   }
 
-  // Pressure in Low Chases: If required RR is very low (< 4), but pressure is rising (wickets lost)
-  // Batters might "freeze", increasing dot ball probability
-  if (ctx.requiredRR && ctx.requiredRR < 4 && pressure > 50) {
-    w['0'] *= 1.3
-    w['1'] *= 0.8
-    w['W'] *= 1.2 // Panic sets in
-  }
+  // Composure/Temperament influence on Wicket
+  if (batsman.temperament < 40) w['W'] *= 1.3 // Low temperament = more likely to throw it away under pressure
+  if (bowler.consistency > 80) w['0'] *= 1.2 // High consistency = more dot balls
 
   // Shot vs Delivery Matchup
   if (shot === 'Defend') {
-    w['W'] *= 0.3
-    w['0'] *= 3.0
+    w['W'] *= 0.2 // Defending is very safe
+    w['0'] *= 3.5
     w['4'] *= 0.05
     w['6'] *= 0
-  } else if (shot === 'Slog') {
-    w['W'] *= 2.5
-    w['6'] *= 3.0
-    w['4'] *= 1.5
-    w['0'] *= 0.5
-  }
-
-  // Matchup Logic: Finishers vs Part-timers at the end
-  const isFinisher = batsman.battingRating > 80 && batsman.power > 80
-  const isPartTimer = bowler.bowlingRating < 75
-  if (isFinisher && isPartTimer && ctx.phase === 'Death') {
-    w['6'] *= 1.5
-    w['4'] *= 1.3
-    w['0'] *= 0.6
-  }
-
-  // Execution Impact - Making it even more decisive
-  if (batterExec === 'Perfect') {
-    w['4'] *= 2.5
-    w['6'] *= 3.0
-    w['W'] *= 0.1
+  } else if (shot === 'Slog' || shot === 'Desperation') {
+    w['W'] *= 3.0 // High risk
+    w['6'] *= 3.5
+    w['4'] *= 1.8
     w['0'] *= 0.4
+  } else if (shot === 'Lofted') {
+    w['W'] *= 2.0
+    w['6'] *= 2.5
+    w['4'] *= 1.3
+  }
+
+  // Execution Impact
+  if (batterExec === 'Perfect') {
+    w['4'] *= 2.8
+    w['6'] *= 3.5
+    w['W'] *= 0.05 // Almost impossible to get out
+    w['0'] *= 0.3
   } else if (batterExec === 'Poor') {
-    w['W'] *= 4.0
-    w['0'] *= 2.5
-    w['4'] *= 0.1
-    w['6'] *= 0.05
+    w['W'] *= 4.5 // Massive risk of wicket
+    w['0'] *= 2.0
+    w['4'] *= 0.05
+    w['6'] *= 0.01
   }
 
   if (bowlerExec === 'Perfect') {
-    w['W'] *= 2.5
-    w['0'] *= 2.5
-    w['4'] *= 0.2
-    w['6'] *= 0.1
+    w['W'] *= 3.0 // Bowler forces an error
+    w['0'] *= 3.0
+    w['4'] *= 0.1
+    w['6'] *= 0.05
   } else if (bowlerExec === 'Poor') {
-    w['4'] *= 2.5
-    w['6'] *= 2.0
-    w['W'] *= 0.4
-    w['0'] *= 0.5
+    // Little Bowler Power: Even a poor ball can get a wicket if the batsman is reckless
+    // We don't penalize W as much as before (was 0.4, now 0.8)
+    w['W'] *= 0.8 
+    w['4'] *= 2.8
+    w['6'] *= 2.2
+    w['0'] *= 0.4
   }
 
   // Pitch Impact

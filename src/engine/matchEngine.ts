@@ -515,12 +515,22 @@ export function simulateBall(state: MatchState, isInteractive: boolean = true): 
   // If Normal strategy, slightly boost singles (Outcome 1) to keep board moving
   if (sStrat === 'Normal') {
     weights['1'] *= 1.15;
-    weights['0'] *= 0.9; // Reduce dot balls
+    weights['0'] *= 0.85; // Reduce dot balls to keep game moving
   }
 
-  // If Aggressive, reduce wicket chance slightly to prevent instant collapse
+  // If Aggressive, INCREASE wicket risk (User wants more realism/wickets)
   if (sStrat === 'Aggressive') {
-    weights['W'] *= 0.85;
+    // Only apply if not perfectly set
+    const faced = inn.batsmanSettling[inn.strikerId]?.balls || 0
+    if (faced < 15) {
+      weights['W'] *= 1.25; // More risk for aggressive play when not fully set
+    }
+  }
+
+  // Pressure impact on wickets (Phase 9)
+  if (inn.pressure > 70) {
+    weights['W'] *= 1.2; // Panic leads to wickets
+    weights['0'] *= 1.1; // Batters freeze
   }
 
   const out = chooseOutcome(weights)

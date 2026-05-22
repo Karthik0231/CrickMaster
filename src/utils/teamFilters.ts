@@ -14,8 +14,8 @@ export function filterTeamsByMode(teams: Team[], mode: GameMode | null): Team[] 
         return teams.filter(t => INTERNATIONAL_TEAM_IDS.includes(t.id))
     }
 
-    if (mode === 'IPL' || mode === 'Career') {
-        // For IPL and Career, show IPL teams
+    if (mode === 'IPL') {
+        // For IPL, show IPL teams
         return teams.filter(t => IPL_TEAM_IDS.includes(t.id))
     }
 

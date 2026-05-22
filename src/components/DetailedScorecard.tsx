@@ -108,158 +108,69 @@ export function DetailedScorecard({ state }: { state: MatchState }) {
   const maxRuns = Math.max(...overRuns, 10)
 
   return (
-    <div className="detailed-scorecard card">
+    <div className="detailed-scorecard" style={{ display: 'grid', gap: '20px' }}>
       <Tabs activeTab={activeTab} setActiveTab={setActiveTab} state={state} />
 
-      <div className="scorecard-summary">
-        <div className="score-main">
-          <h2>{battingTeam.name} {innings.runs}/{innings.wickets}</h2>
-          <p>({innings.balls === 0 ? '0.0' : `${Math.floor(innings.balls / 6)}.${innings.balls % 6}`} Overs)</p>
+      <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+        <div style={{ padding: '16px 20px', background: 'var(--primary)', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ margin: 0, fontSize: '0.9rem', fontWeight: '900' }}>{battingTeam.short} INNINGS</h2>
+          <div style={{ fontWeight: '800' }}>{innings.runs}/{innings.wickets} ({Math.floor(innings.balls / 6)}.{innings.balls % 6})</div>
         </div>
-        <div className="match-dynamics">
-          <div className="stat-item">
-            <span>Momentum</span>
-            <div className="momentum-bar">
-              <div className="momentum-fill" style={{
-                width: `${Math.abs(innings.momentum || 0) * 10}%`,
-                backgroundColor: (innings.momentum || 0) > 0 ? '#4caf50' : '#f44336',
-                marginLeft: (innings.momentum || 0) < 0 ? 'auto' : '0'
-              }}></div>
-            </div>
-          </div>
-          <div className="stat-item">
-            <span>Pressure</span>
-            <span className="val">{Math.floor(innings.pressure || 0)}%</span>
-          </div>
-        </div>
-      </div>
-
-      {state.matchCompleted && (
-        <div className="awards-section" style={{ 
-          marginTop: '24px', 
-          padding: '24px', 
-          background: 'var(--bg-alt)', 
-          borderRadius: '16px', 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-          gap: '20px', 
-          border: '1px solid var(--card-border)',
-          boxShadow: 'var(--shadow-sm)'
-        }}>
-          {(() => {
-             const awards = calculateManOfTheMatch(state)
-             if (!awards) return <div>Calculating...</div>
-             return (
-               <>
-                 <div className="award-card" style={{ padding: '20px', background: 'white', border: '1px solid #ffd700', borderRadius: '12px', textAlign: 'center', boxShadow: '0 4px 12px rgba(255, 215, 0, 0.1)' }}>
-                   <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#b8860b', letterSpacing: '1px', marginBottom: '8px', fontWeight: '800' }}>Player of the Match</div>
-                   <div style={{ fontSize: '1.25rem', fontWeight: '900', color: 'var(--text)', marginBottom: '4px' }}>{awards.mom.playerName}</div>
-                   <div style={{ fontSize: '0.9rem', color: '#b8860b', fontWeight: '700' }}>₹{awards.mom.prize.toLocaleString()}</div>
-                 </div>
-
-                 {awards.superStriker && (
-                   <div className="award-card" style={{ padding: '20px', background: 'white', border: '1px solid #ff4d4d', borderRadius: '12px', textAlign: 'center', boxShadow: '0 4px 12px rgba(255, 77, 77, 0.1)' }}>
-                     <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#dc2626', letterSpacing: '1px', marginBottom: '8px', fontWeight: '800' }}>Super Striker</div>
-                     <div style={{ fontSize: '1.25rem', fontWeight: '900', color: 'var(--text)', marginBottom: '4px' }}>{awards.superStriker.playerName}</div>
-                     <div style={{ fontSize: '0.9rem', color: '#dc2626', fontWeight: '700' }}>₹{awards.superStriker.prize.toLocaleString()}</div>
-                   </div>
-                 )}
-
-                 {awards.gameChanger && (
-                   <div className="award-card" style={{ padding: '20px', background: 'white', border: '1px solid #22d3ee', borderRadius: '12px', textAlign: 'center', boxShadow: '0 4px 12px rgba(34, 211, 238, 0.1)' }}>
-                     <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#0891b2', letterSpacing: '1px', marginBottom: '8px', fontWeight: '800' }}>Game Changer</div>
-                     <div style={{ fontSize: '1.25rem', fontWeight: '900', color: 'var(--text)', marginBottom: '4px' }}>{awards.gameChanger.playerName}</div>
-                     <div style={{ fontSize: '0.9rem', color: '#0891b2', fontWeight: '700' }}>₹{awards.gameChanger.prize.toLocaleString()}</div>
-                   </div>
-                 )}
-               </>
-             )
-          })()}
-        </div>
-      )}
-
-      <div className="manhattan-chart">
-        <h3>Manhattan Chart</h3>
-        <div className="chart-container">
-          {overRuns.map((runs, i) => {
-            const hasWicket = (innings.overOutcomes[i] || []).includes('W')
-            return (
-              <div key={i} className="chart-bar-wrapper">
-                <div
-                  className={`chart-bar ${hasWicket ? 'has-wicket' : ''}`}
-                  style={{ height: `${(runs / maxRuns) * 100}%` }}
-                >
-                  {runs > 0 && <span className="bar-val">{runs}</span>}
-                  {hasWicket && <span className="wicket-indicator">W</span>}
-                </div>
-                <span className="over-num">{i + 1}</span>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      <div className="table-section" style={{ marginTop: '32px' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--primary)', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Batting</h3>
-        <div className="table-container">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        
+        <div className="table-container" style={{ border: 'none', borderRadius: '0' }}>
+          <table>
             <thead>
-              <tr style={{ background: 'var(--bg-alt)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '12px', textAlign: 'left' }}>Batter</th>
-                <th style={{ padding: '12px', textAlign: 'left' }}>Dismissal</th>
-                <th style={{ padding: '12px', textAlign: 'right' }}>R</th>
-                <th style={{ padding: '12px', textAlign: 'right' }}>B</th>
-                <th style={{ padding: '12px', textAlign: 'right' }}>4s</th>
-                <th style={{ padding: '12px', textAlign: 'right' }}>6s</th>
-                <th style={{ padding: '12px', textAlign: 'right' }}>SR</th>
+              <tr>
+                <th>Batter</th>
+                <th style={{ textAlign: 'right' }}>R</th>
+                <th style={{ textAlign: 'right' }}>B</th>
+                <th style={{ textAlign: 'right' }}>SR</th>
               </tr>
             </thead>
             <tbody>
               {battingOrderList.map(b => (
-                <tr key={b.id} style={{ borderBottom: '1px solid var(--card-border)' }}>
-                  <td style={{ padding: '12px', fontWeight: '700' }}>{b.name}{b.id === innings.strikerId || b.id === innings.nonStrikerId ? '*' : ''}</td>
-                  <td style={{ padding: '12px', fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>{b.dismissalText}</td>
-                  <td style={{ padding: '12px', textAlign: 'right', fontWeight: '900', color: 'var(--primary)' }}>{b.runs}</td>
-                  <td style={{ padding: '12px', textAlign: 'right' }}>{b.balls}</td>
-                  <td style={{ padding: '12px', textAlign: 'right' }}>{b.fours}</td>
-                  <td style={{ padding: '12px', textAlign: 'right' }}>{b.sixes}</td>
-                  <td style={{ padding: '12px', textAlign: 'right', fontWeight: '600' }}>{b.balls > 0 ? ((b.runs / b.balls) * 100).toFixed(1) : '0.0'}</td>
+                <tr key={b.id}>
+                  <td>
+                    <div style={{ fontWeight: '800', fontSize: '0.85rem' }}>{b.name}{b.id === innings.strikerId || b.id === innings.nonStrikerId ? '*' : ''}</div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{b.dismissalText || 'not out'}</div>
+                  </td>
+                  <td style={{ textAlign: 'right', fontWeight: '900' }}>{b.runs}</td>
+                  <td style={{ textAlign: 'right', fontSize: '0.75rem' }}>{b.balls}</td>
+                  <td style={{ textAlign: 'right', fontWeight: '700', color: 'var(--primary)', fontSize: '0.75rem' }}>
+                    {b.balls > 0 ? ((b.runs / b.balls) * 100).toFixed(1) : '0.0'}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        {didNotBat.length > 0 && (
-          <div style={{ marginTop: '16px', padding: '12px', background: 'var(--bg-alt)', borderRadius: '8px', fontSize: '0.85rem' }}>
-            <strong style={{ color: 'var(--text-muted)' }}>DID NOT BAT: </strong>
-            <span style={{ fontWeight: '600' }}>{didNotBat.map(p => p.name).join(', ')}</span>
-          </div>
-        )}
       </div>
 
-      <div className="table-section" style={{ marginTop: '40px' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--primary)', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Bowling</h3>
-        <div className="table-container">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+        <div style={{ padding: '12px 20px', background: 'var(--bg-alt)', borderBottom: '1px solid var(--card-border)' }}>
+          <h3 style={{ margin: 0, fontSize: '0.8rem', fontWeight: '800', color: 'var(--text-muted)' }}>BOWLING</h3>
+        </div>
+        <div className="table-container" style={{ border: 'none', borderRadius: '0' }}>
+          <table>
             <thead>
-              <tr style={{ background: 'var(--bg-alt)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '12px', textAlign: 'left' }}>Bowler</th>
-                <th style={{ padding: '12px', textAlign: 'right' }}>O</th>
-                <th style={{ padding: '12px', textAlign: 'right' }}>M</th>
-                <th style={{ padding: '12px', textAlign: 'right' }}>R</th>
-                <th style={{ padding: '12px', textAlign: 'right' }}>W</th>
-                <th style={{ padding: '12px', textAlign: 'right' }}>Econ</th>
+              <tr>
+                <th>Bowler</th>
+                <th style={{ textAlign: 'right' }}>O</th>
+                <th style={{ textAlign: 'right' }}>R</th>
+                <th style={{ textAlign: 'right' }}>W</th>
+                <th style={{ textAlign: 'right' }}>Econ</th>
               </tr>
             </thead>
             <tbody>
               {activeBowlers.map(b => (
-                <tr key={b.id} style={{ borderBottom: '1px solid var(--card-border)' }}>
-                  <td style={{ padding: '12px', fontWeight: '700' }}>{b.name}{b.id === innings.currentBowlerId ? '*' : ''}</td>
-                  <td style={{ padding: '12px', textAlign: 'right' }}>{b.overs.toFixed(1)}</td>
-                  <td style={{ padding: '12px', textAlign: 'right' }}>{b.maidens}</td>
-                  <td style={{ padding: '12px', textAlign: 'right' }}>{b.runs}</td>
-                  <td style={{ padding: '12px', textAlign: 'right', fontWeight: '900', color: 'var(--danger)' }}>{b.wickets}</td>
-                  <td style={{ padding: '12px', textAlign: 'right', fontWeight: '600' }}>{b.balls > 0 ? ((b.runs / b.balls) * 6).toFixed(1) : '0.0'}</td>
+                <tr key={b.id}>
+                  <td style={{ fontWeight: '800', fontSize: '0.85rem' }}>{b.name}{b.id === innings.currentBowlerId ? '*' : ''}</td>
+                  <td style={{ textAlign: 'right' }}>{Math.floor(b.balls / 6)}.{b.balls % 6}</td>
+                  <td style={{ textAlign: 'right' }}>{b.runs}</td>
+                  <td style={{ textAlign: 'right', fontWeight: '900', color: 'var(--secondary)' }}>{b.wickets}</td>
+                  <td style={{ textAlign: 'right', fontWeight: '700', fontSize: '0.75rem' }}>
+                    {b.balls > 0 ? ((b.runs / b.balls) * 6).toFixed(2) : '0.00'}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -267,7 +178,7 @@ export function DetailedScorecard({ state }: { state: MatchState }) {
         </div>
       </div>
 
-      <div className="partnerships-section" style={{ marginTop: '40px' }}>
+      <div className="partnerships-section" style={{ marginTop: '20px', padding: '0 20px' }}>
         <h3 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--primary)', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Partnerships</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
           {innings.partnerships?.map((p, i) => {

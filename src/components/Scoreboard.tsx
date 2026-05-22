@@ -2,7 +2,7 @@ import React from 'react'
 import { MatchState, Strategy } from '../state/types'
 import { calculateManOfTheMatch } from '../engine/manOfTheMatch'
 import { Action } from '../state/reducer'
-import { Trophy } from 'lucide-react'
+import { Trophy, User } from 'lucide-react'
 
 function getTeam(state: MatchState, teamId: string) {
   return state.homeTeam.id === teamId ? state.homeTeam : state.awayTeam
@@ -15,227 +15,116 @@ interface ScoreboardProps {
 }
 
 export function Scoreboard({ state, matchDispatch, appDispatch }: ScoreboardProps) {
-  const i1 = state.innings1
-  const i2 = state.innings2
-  const mom = calculateManOfTheMatch(state)
+  const inn = state.currentInnings === 1 ? state.innings1 : state.innings2
+  if (!inn) return null
 
-  const MomentumBar = ({ momentum }: { momentum: number }) => {
-    const clamped = Math.max(-100, Math.min(100, momentum))
-    return (
-      <div className="momentum-container" style={{ marginTop: '12px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: '600' }}>
-          <span>MATCH MOMENTUM</span>
-          <span>{momentum > 0 ? 'BATTER ADVANTAGE' : 'BOWLER PRESSURE'}</span>
-        </div>
-        <div className="momentum-track" style={{ height: '6px', background: 'var(--bg-alt)', borderRadius: '3px', overflow: 'hidden', position: 'relative' }}>
-          <div
-            style={{
-              position: 'absolute',
-              height: '100%',
-              left: '50%',
-              width: `${Math.abs(clamped) / 2}%`,
-              background: clamped >= 0 ? 'var(--success)' : 'var(--danger)',
-              transform: clamped >= 0 ? 'none' : 'scaleX(-1)',
-              transformOrigin: 'left',
-              transition: 'var(--transition)'
-            }}
-          />
-        </div>
-      </div>
-    )
+  const batTeam = getTeam(state, inn.battingTeamId)
+  const bowlTeam = getTeam(state, inn.bowlingTeamId)
+  const striker = batTeam.players.find(p => p.id === inn.strikerId)
+  const nonStriker = batTeam.players.find(p => p.id === inn.nonStrikerId)
+  const bowler = bowlTeam.players.find(p => p.id === inn.currentBowlerId)
+
+  const getBatStats = (pid: string) => {
+    return (inn.events || []).reduce((acc, e) => {
+      if (e.strikerId === pid) {
+        acc.r += e.runs;
+        if (e.extraType !== 'Wide') acc.b++;
+        if (e.runs === 4) acc.fours++;
+        if (e.runs === 6) acc.sixes++;
+      }
+      return acc;
+    }, { r: 0, b: 0, fours: 0, sixes: 0 })
   }
 
-  const ModeSelector = ({ pid, current, isOpponent, type }: { pid: string; current: Strategy; isOpponent: boolean; type: 'batsman' | 'bowler' }) => {
-    if (isOpponent) return <span className="pill" style={{ fontSize: '0.7rem', background: 'var(--bg-alt)', color: 'var(--text-muted)' }}>{current.toUpperCase()}</span>
-    if (!matchDispatch) return <span className="pill" style={{ color: 'var(--primary)', background: 'var(--primary-glow)' }}>{current.toUpperCase()}</span>
-
-    return (
-      <div className="p-mode-controls" style={{ display: 'flex', gap: '2px', background: 'var(--bg-alt)', padding: '2px', borderRadius: '6px' }}>
-        {(['Defensive', 'Normal', 'Aggressive'] as Strategy[]).map(m => (
-          <button
-            key={m}
-            className={`mode-mini-btn ${current === m ? 'active' : ''}`}
-            style={{
-              padding: '4px 8px',
-              fontSize: '0.65rem',
-              borderRadius: '4px',
-              background: current === m ? 'var(--primary)' : 'transparent',
-              color: current === m ? 'white' : 'var(--text-muted)',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: current === m ? '700' : '500'
-            }}
-            onClick={() => {
-              if (matchDispatch) {
-                if (type === 'batsman') {
-                  matchDispatch({ type: 'CHANGE_BATSMAN_MODE', payload: { batsmanId: pid, strategy: m } })
-                } else {
-                  matchDispatch({ type: 'CHANGE_BOWLER_MODE', payload: { bowlerId: pid, strategy: m } })
-                }
-              }
-            }}
-          >
-            {m === 'Normal' ? 'NORM' : m.toUpperCase().slice(0, 3)}
-          </button>
-        ))}
-      </div>
-    )
+  const getBowlStats = (pid: string) => {
+    return (inn.events || []).reduce((acc, e) => {
+      if (e.bowlerId === pid) {
+        acc.r += e.runs;
+        if (e.wicket) acc.w++;
+        if (e.extraType !== 'Wide' && e.extraType !== 'NoBall') acc.b++;
+      }
+      return acc;
+    }, { r: 0, w: 0, b: 0 })
   }
+
+  const runsNeeded = inn.target !== undefined ? (inn.target - inn.runs) : 0
+  const ballsLeft = (state.config.overs * 6) - inn.balls
+  const rrr = ballsLeft > 0 ? ((runsNeeded / ballsLeft) * 6).toFixed(2) : '0.00'
 
   return (
-    <div className="scoreboard card" style={{ padding: '32px', boxShadow: 'var(--shadow-md)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h3 style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '700' }}>Match Status</h3>
-          {(() => {
-            const inn = state.currentInnings === 1 ? state.innings1 : state.innings2
-            return inn && <span className="pill" style={{ background: 'var(--primary-glow)', color: 'var(--primary)', fontWeight: '700' }}>{inn.intentPhase}</span>
-          })()}
+    <div className="match-scoreboard-mobile" style={{ display: 'grid', gap: '12px' }}>
+      <div className="card" style={{ padding: '16px', background: 'white', border: '1px solid var(--card-border)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ width: '32px', height: '32px', background: '#f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>🏠</div>
+            <div style={{ fontWeight: '900', fontSize: '1.1rem' }}>{state.homeTeam.name.slice(0, 3).toUpperCase()}</div>
+          </div>
+          <div style={{ background: '#f1f5f9', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: '900', color: 'var(--text-muted)' }}>VS</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexDirection: 'row-reverse' }}>
+            <div style={{ width: '32px', height: '32px', background: '#f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>✈️</div>
+            <div style={{ fontWeight: '900', fontSize: '1.1rem' }}>{state.awayTeam.name.slice(0, 3).toUpperCase()}</div>
+          </div>
         </div>
-        {i2?.requiredRunRate !== undefined && !state.matchCompleted && (
-          <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--primary)' }}>
-            RRR: {i2.requiredRunRate.toFixed(2)}
+
+        <div style={{ textAlign: 'center', padding: '8px 0', borderTop: '1px solid #f1f5f9' }}>
+           <div style={{ fontSize: '2.2rem', fontWeight: '900', color: 'var(--primary)', lineHeight: 1 }}>
+             {inn.runs}/{inn.wickets}
+           </div>
+           <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: '700', marginTop: '4px' }}>
+             OVERS: {Math.floor(inn.balls / 6)}.{inn.balls % 6} ({state.config.overs})
+           </div>
+        </div>
+
+        {inn.target !== undefined && (
+          <div style={{ background: 'var(--primary-glow)', color: 'var(--primary)', padding: '8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '800', textAlign: 'center', marginTop: '10px' }}>
+            NEED {runsNeeded} RUNS FROM {ballsLeft} BALLS (RRR: {rrr})
           </div>
         )}
       </div>
 
-      <div style={{ display: 'grid', gap: '24px' }}>
-        {i1 && (
-          <div className="innings-row" style={{ position: 'relative' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '1.25rem', fontWeight: '800', color: state.currentInnings === 1 ? 'var(--text)' : 'var(--text-muted)' }}>{getTeam(state, i1.battingTeamId).name}</span>
-              <span style={{ fontSize: '2.5rem', fontWeight: '900', color: state.currentInnings === 1 ? 'var(--primary)' : 'var(--text-muted)' }}>
-                {i1.runs}<span style={{ opacity: 0.5, fontSize: '1.5rem', fontWeight: '400' }}>/{i1.wickets}</span>
-              </span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-              <span>{Math.floor(i1.balls / 6)}.{i1.balls % 6} Overs</span>
-              <span>CRR: <span style={{ color: 'var(--text)', fontWeight: '600' }}>{i1.runRate.toFixed(2)}</span></span>
-            </div>
-          </div>
-        )}
-
-        {i2 && (
-          <div className="innings-row" style={{ paddingTop: '24px', borderTop: '1px solid var(--card-border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '1.25rem', fontWeight: '800', color: state.currentInnings === 2 ? 'var(--text)' : 'var(--text-muted)' }}>{getTeam(state, i2.battingTeamId).name}</span>
-              <span style={{ fontSize: '2.5rem', fontWeight: '900', color: state.currentInnings === 2 ? 'var(--primary)' : 'var(--text-muted)' }}>
-                {i2.runs}<span style={{ opacity: 0.5, fontSize: '1.5rem', fontWeight: '400' }}>/{i2.wickets}</span>
-              </span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-              <span>{Math.floor(i2.balls / 6)}.{i2.balls % 6} Overs <span style={{ fontSize: '0.75rem' }}> (TARGET: {i2.target})</span></span>
-              <span>CRR: <span style={{ color: 'var(--text)', fontWeight: '600' }}>{i2.runRate.toFixed(2)}</span></span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {!state.matchCompleted && (
-        <div style={{ marginTop: '32px', display: 'grid', gap: '20px' }}>
-          <MomentumBar momentum={state.currentInnings === 1 ? (i1?.momentum || 0) : (i2?.momentum || 0)} />
-
-          {(() => {
-            const inn = state.currentInnings === 1 ? state.innings1! : state.innings2!
-            const isUserBatting = state.userTeamId === inn.battingTeamId
-            const isUserBowling = state.userTeamId === inn.bowlingTeamId
-
-            const batTeam = getTeam(state, inn.battingTeamId)
-            const bowlTeam = getTeam(state, inn.bowlingTeamId)
-
-            const striker = batTeam.players.find(p => p.id === inn.strikerId)
-            const nonStriker = batTeam.players.find(p => p.id === inn.nonStrikerId)
-            const bowler = bowlTeam.players.find(p => p.id === inn.currentBowlerId)
-
-            const getBatStats = (pid: string) => {
-              return inn.events.reduce((acc, e) => {
-                if (e.strikerId === pid) {
-                  acc.r += e.runs;
-                  if (e.extraType !== 'Wide') acc.b++;
-                }
-                return acc;
-              }, { r: 0, b: 0 })
-            }
-
-            const getBowlStats = (pid: string) => {
-              return inn.events.reduce((acc, e) => {
-                if (e.bowlerId === pid) {
-                  acc.r += e.runs;
-                  if (e.wicket) acc.w++;
-                  if (e.extraType !== 'Wide' && e.extraType !== 'NoBall') acc.b++;
-                }
-                return acc;
-              }, { r: 0, w: 0, b: 0 })
-            }
-
+      <div className="card" style={{ padding: '12px', background: 'white' }}>
+        <div style={{ display: 'grid', gap: '8px' }}>
+          {[striker, nonStriker].filter(Boolean).map((p, i) => {
+            const stats = getBatStats(p!.id)
+            const isStriker = i === 0
             return (
-              <div className="grid-2" style={{ gap: '16px' }}>
-                <div className="card" style={{ padding: '16px', background: 'var(--bg-alt)', borderRadius: '12px' }}>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', fontWeight: '700' }}>BATTING</div>
-                  {striker && (
-                    <div style={{ marginBottom: '12px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '0.9rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>BAT</span>
-                          {striker.name}*
-                        </span>
-                        <span style={{ fontWeight: '800', color: 'var(--primary)' }}>{getBatStats(striker.id).r}({getBatStats(striker.id).b})</span>
-                      </div>
-                      <ModeSelector pid={striker.id} current={inn.strikerStrategy || 'Normal'} isOpponent={!isUserBatting} type="batsman" />
-                    </div>
-                  )}
-                  {nonStriker && (
-                    <div style={{ borderTop: '1px solid var(--card-border)', paddingTop: '12px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{nonStriker.name}</span>
-                        <span style={{ fontWeight: '700' }}>{getBatStats(nonStriker.id).r}({getBatStats(nonStriker.id).b})</span>
-                      </div>
-                      <ModeSelector pid={nonStriker.id} current={inn.nonStrikerStrategy || 'Normal'} isOpponent={!isUserBatting} type="batsman" />
-                    </div>
-                  )}
+              <div key={p!.id} className="player-status-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', borderRadius: '8px', margin: 0, border: isStriker ? '1px solid var(--primary)' : '1px solid var(--card-border)', background: isStriker ? 'var(--primary-glow)' : 'white' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ color: 'var(--primary)' }}><User size={16} /></div>
+                  <div>
+                    <div style={{ fontWeight: '800', fontSize: '0.9rem' }}>{p!.name}{isStriker ? '*' : ''}</div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>4s: {stats.fours} • 6s: {stats.sixes}</div>
+                  </div>
                 </div>
-                <div className="card" style={{ padding: '16px', background: 'var(--bg-alt)', borderRadius: '12px', display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', fontWeight: '700' }}>BOWLING</div>
-                  {bowler && (
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '0.9rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>BOWL</span>
-                          {bowler.name}
-                        </span>
-                        <span style={{ fontWeight: '800', color: 'var(--danger)' }}>{getBowlStats(bowler.id).w}-{getBowlStats(bowler.id).r}</span>
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
-                        Overs: {Math.floor(getBowlStats(bowler.id).b / 6)}.{getBowlStats(bowler.id).b % 6}
-                      </div>
-                      <div style={{ marginTop: 'auto' }}>
-                        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Bowler Intent</div>
-                        <ModeSelector pid={bowler.id} current={inn.bowlingStrategy || 'Normal'} isOpponent={!isUserBowling} type="bowler" />
-                      </div>
-                    </div>
-                  )}
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontWeight: '900', fontSize: '1.1rem' }}>{stats.r}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({stats.b})</div>
                 </div>
               </div>
             )
-          })()}
+          })}
         </div>
-      )}
+      </div>
 
-      {state.matchCompleted && (
-        <div style={{ marginTop: '32px', textAlign: 'center', background: 'var(--primary-glow)', padding: '24px', borderRadius: '16px', border: '2px solid var(--primary)' }}>
-          <div style={{ color: 'var(--primary)', fontWeight: '900', fontSize: '1.5rem', marginBottom: '4px', textTransform: 'uppercase' }}>
-            {state.winnerId
-              ? `${getTeam(state, state.winnerId).name} Victory`
-              : 'Match Tied'}
-          </div>
-          <div style={{ color: 'var(--text-muted)', marginBottom: '20px', fontWeight: '600' }}>
-            {state.victoryMargin ? state.victoryMargin : 'Both teams finished level'}
-          </div>
-          {mom && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', padding: '10px 20px', background: 'var(--primary)', color: 'white', borderRadius: '30px', fontWeight: '800', fontSize: '0.9rem' }}>
-              <Trophy size={16} /> PLAYER OF THE MATCH: {mom.mom.playerName}
+      {bowler && (
+        <div className="card" style={{ padding: '12px', background: 'white' }}>
+          <div className="player-status-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', borderRadius: '8px', margin: 0, border: '1px solid #ef4444', background: '#fef2f2' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ color: '#ef4444' }}>⚾</div>
+              <div>
+                <div style={{ fontWeight: '800', fontSize: '0.9rem' }}>{bowler.name}</div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>ECON: {getBowlStats(bowler.id).b > 0 ? ((getBowlStats(bowler.id).r / (getBowlStats(bowler.id).b / 6))).toFixed(2) : '0.00'}</div>
+              </div>
             </div>
-          )}
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontWeight: '900', fontSize: '1.1rem', color: '#ef4444' }}>
+                {getBowlStats(bowler.id).w}-{getBowlStats(bowler.id).r}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                ({Math.floor(getBowlStats(bowler.id).b / 6)}.{getBowlStats(bowler.id).b % 6})
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
