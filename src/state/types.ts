@@ -1,4 +1,4 @@
-export type GameMode = 'Quick' | 'Series' | 'IPL' | 'WorldCup'
+export type GameMode = 'Quick' | 'Series' | 'IPL' | 'WorldCup' | 'Career'
 export type MatchFormat = 'T20' | 'ODI' | 'Test'
 
 export type Outcome = '0' | '1' | '2' | '3' | '4' | '6' | 'W' | 'Wd' | 'Nb'

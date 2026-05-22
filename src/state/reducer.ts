@@ -1,5 +1,5 @@
 import { MatchState, Strategy, InningsState } from './types'
-import { setupNewMatch, simulateOver, simulateMatch, initializeInningsAfterToss, simulateBall } from '../engine/matchEngine'
+import { setupNewMatch, simulateOver, simulateMatch, initializeInningsAfterToss } from '../engine/matchEngine'
 import { TEAMS } from '../data/teams'
 
 // Default dummy state to satisfy Types
@@ -20,7 +20,6 @@ export const initialMatchState: MatchState = setupNewMatch({
 
 export type Action =
   | { type: 'INIT'; payload: MatchState }
-  | { type: 'RUN_BALL' }
   | { type: 'RUN_OVER' }
   | { type: 'SIMULATE_MATCH' }
   | { type: 'SELECT_NEXT_BATSMAN'; payload: string } // Player ID
@@ -88,20 +87,6 @@ export function matchReducer(state: MatchState, action: Action): MatchState {
   if (!inn) return state
 
   switch (action.type) {
-    case 'RUN_BALL': {
-      const { event, innings } = simulateBall(state)
-      const commentary = [...state.commentary, event.text]
-      let newState = { ...state, commentary }
-      if (state.currentInnings === 1) newState.innings1 = innings
-      else newState.innings2 = innings
-
-      // Check for completion/next innings/winner
-      // (This logic is usually in simulateOver, but we need it for single ball too)
-      if (innings.completed) {
-        // ... completion logic ...
-      }
-      return newState
-    }
     case 'CHANGE_STRATEGY': {
       const updatedInn = { ...inn }
       if (action.payload.batting) {

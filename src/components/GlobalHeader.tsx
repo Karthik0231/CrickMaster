@@ -88,37 +88,17 @@ export function GlobalHeader({
                         <div className="mobile-settings">
                             <button
                                 className="settings-btn"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSettingsOpen(!settingsOpen);
-                                }}
-                                style={{
-                                    width: '100%',
-                                    textAlign: 'left',
-                                    background: settingsOpen ? 'var(--primary-glow)' : 'none',
-                                    color: settingsOpen ? 'var(--primary)' : 'var(--text-muted)',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center'
-                                }}
+                                onClick={() => setSettingsOpen(!settingsOpen)}
                             >
-                                <span>Settings</span>
-                                <span style={{ fontSize: '0.8rem' }}>{settingsOpen ? '▲' : '▼'}</span>
+                                Settings ⚙️
                             </button>
 
                             {settingsOpen && (
-                                <div className="mobile-dropdown" style={{
-                                    marginTop: '8px',
-                                    paddingLeft: '12px',
-                                    borderLeft: '2px solid var(--primary-glow)',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '8px'
-                                }}>
-                                    {isInMatch && <button onClick={() => { onRestartMatch(); setMenuOpen(false); }}>Restart Match</button>}
-                                    {isInTournament && <button onClick={() => { onRestartTournament(); setMenuOpen(false); }}>Restart Tournament</button>}
-                                    <button onClick={() => { handleNavigate('Settings'); setMenuOpen(false); }}>Global Settings</button>
-                                    <button className="danger" onClick={() => { onResetAll(); setMenuOpen(false); }}>Reset All Data</button>
+                                <div className="dropdown-content mobile-dropdown">
+                                    {isInMatch && <button onClick={onRestartMatch}>Restart Match</button>}
+                                    {isInTournament && <button onClick={onRestartTournament}>Restart Tournament</button>}
+                                    <button onClick={() => handleNavigate('Settings')}>Global Settings</button>
+                                    <button className="danger" onClick={onResetAll}>Reset All Data</button>
                                 </div>
                             )}
                         </div>

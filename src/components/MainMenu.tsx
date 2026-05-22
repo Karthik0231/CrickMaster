@@ -12,6 +12,7 @@ export function MainMenu({ onSelectMode }: Props) {
     { id: 'IPL', label: 'IPL Season', desc: 'Auction, squad building, and T20 glory', icon: <Trophy size={32} /> },
     { id: 'WorldCup', label: 'World Cup', desc: 'Represent your nation on the big stage', icon: <Globe size={32} /> },
     { id: 'Series', label: 'Bilateral Series', desc: 'Engage in a competitive multi-match series', icon: <Swords size={32} /> },
+    { id: 'Career', label: 'Career Mode', desc: 'Start as a rookie and become a legend', icon: <User size={32} /> },
   ]
 
   return (

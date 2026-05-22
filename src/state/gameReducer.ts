@@ -34,6 +34,7 @@ export function gameReducer(state: AppState, action: GameAction): AppState {
         case 'SET_MODE': {
             const mode = action.payload;
             let screen: AppState['activeScreen'] = 'Home';
+            if (mode === 'Career') screen = 'Career';
             if (mode === 'Quick' || mode === 'Series' || mode === 'WorldCup' || mode === 'IPL') screen = 'TeamSelect';
 
             // Find existing in-progress tournament for this mode to resume
