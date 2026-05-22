@@ -1,6 +1,7 @@
 import React from 'react'
 import { Action } from '../state/reducer'
 import { MatchState, Strategy } from '../state/types'
+import { Play, FastForward, RotateCcw, ChevronRight } from 'lucide-react'
 
 export function Controls({ state, dispatch }: { state: MatchState; dispatch: React.Dispatch<Action> }) {
   const canRunOver =
@@ -8,26 +9,11 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
     ((state.currentInnings === 1 && state.innings1 && state.innings1.balls < state.config.overs * 6 && state.innings1.wickets < 10) ||
       (state.currentInnings === 2 && state.innings2 && state.innings2.balls < state.config.overs * 6 && state.innings2.wickets < 10 && (state.innings2.target ? state.innings2.runs < state.innings2.target : true)))
 
-  const canSimulate = !state.matchCompleted
-  const canReset = true
-
   const inn = state.currentInnings === 1 ? state.innings1! : state.innings2!
   const isUserBowling = state.userTeamId === inn.bowlingTeamId
   const isUserBatting = state.userTeamId === inn.battingTeamId
-
-  const handleBowlerSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const bowlerId = e.target.value
-    const currentOver = Math.floor(inn.balls / 6)
-    dispatch({ type: 'UPDATE_OVER_PLAN', payload: { over: currentOver, bowlerId } })
-  }
-
-  const handlePlanOver = (over: number, bowlerId: string) => {
-    dispatch({ type: 'UPDATE_OVER_PLAN', payload: { over, bowlerId } })
-  }
-
   const bowlingTeam = state.homeTeam.id === inn.bowlingTeamId ? state.homeTeam : state.awayTeam
   const availableBowlers = bowlingTeam.players.filter(p => p.role !== 'BAT' && p.role !== 'WK')
-
   const currentOver = Math.floor(inn.balls / 6)
   const remainingOvers = Array.from({ length: Math.min(5, state.config.overs - currentOver) }, (_, i) => currentOver + i)
 
@@ -35,168 +21,158 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
     dispatch({ type: 'CHANGE_STRATEGY', payload: { [type]: val } })
   }
 
-  return (
-    <div className="controls-container card" style={{ padding: '24px', borderTop: '4px solid var(--primary)' }}>
-      {/* Bowling Plan Section */}
-      {isUserBowling && (
-        <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid var(--card-border)' }}>
-          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Bowler Planning (Next 5 Overs)
-          </label>
-          <div className="grid-mobile-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
-            {remainingOvers.map(overNum => {
-              const plannedId = inn.overPlan[overNum] || ''
-              return (
-                <div key={overNum} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: '800' }}>OVER {overNum + 1}</div>
-                  <select
-                    value={plannedId || (overNum === currentOver ? inn.currentBowlerId : '')}
-                    onChange={(e) => handlePlanOver(overNum, e.target.value)}
-                    style={{
-                      background: overNum === currentOver ? 'var(--primary-glow)' : 'var(--bg-alt)',
-                      color: 'var(--text)',
-                      border: `1px solid ${overNum === currentOver ? 'var(--primary)' : 'var(--card-border)'}`,
-                      padding: '6px',
-                      borderRadius: '6px',
-                      fontSize: '0.75rem',
-                      fontWeight: '700',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <option value="" disabled>Select</option>
-                    {availableBowlers.map(p => {
-                      const bowled = inn.bowlerOverCounts[p.id] || 0
-                      const maxOvers = Math.ceil(state.config.overs / 5)
-                      const isMaxed = bowled >= maxOvers
-                      return (
-                        <option key={p.id} value={p.id} disabled={isMaxed}>
-                          {p.name.split(' ').pop()} ({bowled}/{maxOvers})
-                        </option>
-                      )
-                    })}
-                  </select>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
+  const stratBtn = (label: string, active: boolean, onClick: () => void, color: string) => (
+    <button
+      key={label}
+      onClick={onClick}
+      style={{
+        flex: 1, padding: '8px 4px', fontSize: '0.7rem', fontWeight: '700',
+        borderRadius: '8px', border: `1.5px solid ${active ? color : '#e2e8f0'}`,
+        background: active ? color : 'white', color: active ? 'white' : '#64748b',
+        cursor: 'pointer', transition: 'all 0.15s ease', letterSpacing: '0.04em'
+      }}
+    >
+      {label}
+    </button>
+  )
 
-      {/* Strategy Section */}
-      <div className="stack-mobile" style={{ display: 'flex', gap: '20px', marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid var(--card-border)' }}>
-         <div style={{ flex: 1 }}>
-             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '8px' }}>
-                 BATTING STRATEGY {isUserBatting ? '' : '(AI CONTROLLED)'}
-             </label>
-             {isUserBatting ? (
-                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                     {['Defensive', 'Normal', 'Aggressive'].map((s) => (
-                         <button
-                             key={s}
-                             className={`strategy-btn ${inn.battingStrategy === s ? 'active' : ''}`}
-                             onClick={() => setStrategy('batting', s as Strategy)}
-                             style={{
-                                 flex: 1,
-                                 padding: '8px',
-                                 fontSize: '0.8rem',
-                                 background: inn.battingStrategy === s ? 'var(--primary)' : 'transparent',
-                                 color: inn.battingStrategy === s ? 'white' : 'var(--text)',
-                                 border: `1px solid ${inn.battingStrategy === s ? 'var(--primary)' : 'var(--card-border)'}`,
-                                 borderRadius: '4px',
-                                 cursor: 'pointer'
-                             }}
-                         >
-                             {s}
-                         </button>
-                     ))}
-                 </div>
-             ) : (
-                 <div className="pill" style={{ 
-                     display: 'block', 
-                     textAlign: 'center',
-                     padding: '8px', 
-                     background: 'var(--bg-alt)', 
-                     color: 'var(--text-muted)',
-                     fontSize: '0.8rem',
-                     fontWeight: '600'
-                 }}>
-                     {/* Show Granular Strategy if available, else standard */}
-                     {inn.strikerStrategy && inn.nonStrikerStrategy 
-                        ? `STRIKER: ${inn.strikerStrategy} | NON-STRIKER: ${inn.nonStrikerStrategy}` 
-                        : 'AI DECIDING...'}
-                 </div>
-             )}
-         </div>
-         
-         <div style={{ flex: 1 }}>
-             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '8px' }}>
-                 BOWLING STRATEGY {isUserBowling ? '' : '(AI CONTROLLED)'}
-             </label>
-             {isUserBowling ? (
-                 <div style={{ display: 'flex', gap: '8px' }}>
-                     {['Defensive', 'Normal', 'Aggressive'].map((s) => (
-                         <button
-                             key={s}
-                             className={`strategy-btn ${inn.bowlingStrategy === s ? 'active' : ''}`}
-                             onClick={() => setStrategy('bowling', s as Strategy)}
-                             style={{
-                                 flex: 1,
-                                 padding: '8px',
-                                 fontSize: '0.8rem',
-                                 background: inn.bowlingStrategy === s ? 'var(--primary)' : 'transparent',
-                                 color: inn.bowlingStrategy === s ? 'white' : 'var(--text)',
-                                 border: `1px solid ${inn.bowlingStrategy === s ? 'var(--primary)' : 'var(--card-border)'}`,
-                                 borderRadius: '4px',
-                                 cursor: 'pointer'
-                             }}
-                         >
-                             {s}
-                         </button>
-                     ))}
-                 </div>
-             ) : (
-                 <div className="pill" style={{ 
-                     display: 'block', 
-                     textAlign: 'center',
-                     padding: '8px', 
-                     background: 'var(--bg-alt)', 
-                     color: 'var(--text-muted)',
-                     fontSize: '0.8rem',
-                     fontWeight: '600'
-                 }}>
-                     {inn.bowlingStrategy ? inn.bowlingStrategy.toUpperCase() : 'AI DECIDING...'}
-                 </div>
-             )}
-         </div>
+  return (
+    <div style={{ background: 'white', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+      {/* Section header */}
+      <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ width: '3px', height: '14px', background: '#1d4ed8', borderRadius: '2px' }} />
+        <span style={{ fontSize: '0.7rem', fontWeight: '800', letterSpacing: '0.12em', color: '#475569', textTransform: 'uppercase' }}>Match Controls</span>
       </div>
 
-      <div className="match-actions grid-mobile-1" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '12px', alignItems: 'center' }}>
+      <div style={{ padding: '18px 20px', display: 'grid', gap: '16px' }}>
+        {/* Bowling plan */}
+        {isUserBowling && (
+          <div>
+            <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px' }}>
+              Bowler Plan — Next {remainingOvers.length} Overs
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(remainingOvers.length, 5)}, 1fr)`, gap: '6px' }}>
+              {remainingOvers.map(overNum => {
+                const plannedId = inn.overPlan[overNum] || ''
+                const isCurrent = overNum === currentOver
+                return (
+                  <div key={overNum} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ fontSize: '0.55rem', fontWeight: '800', color: isCurrent ? '#1d4ed8' : '#94a3b8', textTransform: 'uppercase', textAlign: 'center' }}>
+                      OV {overNum + 1}{isCurrent ? ' ●' : ''}
+                    </div>
+                    <select
+                      value={plannedId || (isCurrent ? inn.currentBowlerId : '')}
+                      onChange={e => dispatch({ type: 'UPDATE_OVER_PLAN', payload: { over: overNum, bowlerId: e.target.value } })}
+                      style={{
+                        width: '100%', padding: '6px 4px', fontSize: '0.65rem', fontWeight: '700',
+                        borderRadius: '8px', border: `1.5px solid ${isCurrent ? '#1d4ed8' : '#e2e8f0'}`,
+                        background: isCurrent ? '#eff6ff' : '#f8fafc', color: '#0f172a',
+                        cursor: 'pointer', outline: 'none', textOverflow: 'ellipsis'
+                      }}
+                    >
+                      <option value="" disabled>Pick</option>
+                      {availableBowlers.map(p => {
+                        const bowled = inn.bowlerOverCounts[p.id] || 0
+                        const maxOvers = Math.ceil(state.config.overs / 5)
+                        return (
+                          <option key={p.id} value={p.id} disabled={bowled >= maxOvers}>
+                            {p.name.split(' ').pop()} ({bowled}/{maxOvers})
+                          </option>
+                        )
+                      })}
+                    </select>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
-        <button
-          className="primary"
-          style={{ padding: '16px', fontSize: '1rem', letterSpacing: '0.05em' }}
-          disabled={!canRunOver}
-          onClick={() => dispatch({ type: 'RUN_OVER' })}
-        >
-          {inn.balls % 6 === 0 && inn.balls > 0 ? 'NEXT OVER' : 'RUN OVER'}
-        </button>
+        {/* Strategy controls */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div>
+            <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>
+              Batting {!isUserBatting && <span style={{ color: '#e2e8f0' }}>· AI</span>}
+            </div>
+            {isUserBatting ? (
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {stratBtn('DEF', inn.battingStrategy === 'Defensive', () => setStrategy('batting', 'Defensive'), '#2563eb')}
+                {stratBtn('NRM', inn.battingStrategy === 'Normal', () => setStrategy('batting', 'Normal'), '#0f172a')}
+                {stratBtn('AGG', inn.battingStrategy === 'Aggressive', () => setStrategy('batting', 'Aggressive'), '#dc2626')}
+              </div>
+            ) : (
+              <div style={{ padding: '8px', background: '#f8fafc', borderRadius: '8px', textAlign: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#94a3b8', border: '1px solid #e2e8f0' }}>
+                {inn.strikerStrategy && inn.nonStrikerStrategy
+                  ? `${inn.strikerStrategy.slice(0, 3).toUpperCase()} / ${inn.nonStrikerStrategy.slice(0, 3).toUpperCase()}`
+                  : 'AI DECIDING'}
+              </div>
+            )}
+          </div>
+          <div>
+            <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>
+              Bowling {!isUserBowling && <span style={{ color: '#e2e8f0' }}>· AI</span>}
+            </div>
+            {isUserBowling ? (
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {stratBtn('DEF', inn.bowlingStrategy === 'Defensive', () => setStrategy('bowling', 'Defensive'), '#2563eb')}
+                {stratBtn('NRM', inn.bowlingStrategy === 'Normal', () => setStrategy('bowling', 'Normal'), '#0f172a')}
+                {stratBtn('AGG', inn.bowlingStrategy === 'Aggressive', () => setStrategy('bowling', 'Aggressive'), '#dc2626')}
+              </div>
+            ) : (
+              <div style={{ padding: '8px', background: '#f8fafc', borderRadius: '8px', textAlign: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#94a3b8', border: '1px solid #e2e8f0' }}>
+                {inn.bowlingStrategy ? inn.bowlingStrategy.toUpperCase() : 'AI DECIDING'}
+              </div>
+            )}
+          </div>
+        </div>
 
-        <button
-          className="secondary"
-          style={{ padding: '16px' }}
-          disabled={!canSimulate}
-          onClick={() => dispatch({ type: 'SIMULATE_MATCH' })}
-        >
-          AUTO-PLAY
-        </button>
+        {/* Action buttons */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '8px', alignItems: 'center' }}>
+          <button
+            disabled={!canRunOver}
+            onClick={() => dispatch({ type: 'RUN_OVER' })}
+            style={{
+              padding: '14px', fontSize: '0.85rem', fontWeight: '800', letterSpacing: '0.06em',
+              borderRadius: '12px', border: 'none', cursor: canRunOver ? 'pointer' : 'not-allowed',
+              background: canRunOver ? 'linear-gradient(135deg,#1d4ed8,#2563eb)' : '#e2e8f0',
+              color: canRunOver ? 'white' : '#94a3b8',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+              boxShadow: canRunOver ? '0 4px 12px rgba(29,78,216,0.25)' : 'none',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Play size={14} fill={canRunOver ? 'white' : '#94a3b8'} />
+            {inn.balls % 6 === 0 && inn.balls > 0 ? 'NEXT OVER' : 'RUN OVER'}
+          </button>
 
-        <button
-          style={{ padding: '16px', color: 'var(--danger)', background: 'transparent', border: 'none', fontSize: '0.8rem' }}
-          disabled={!canReset}
-          onClick={() => dispatch({ type: 'RESET' })}
-        >
-          RESET
-        </button>
+          <button
+            disabled={state.matchCompleted}
+            onClick={() => dispatch({ type: 'SIMULATE_MATCH' })}
+            style={{
+              padding: '14px 16px', fontSize: '0.75rem', fontWeight: '700',
+              borderRadius: '12px', border: '1.5px solid #e2e8f0',
+              background: 'white', color: '#475569', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <FastForward size={14} />
+            AUTO
+          </button>
+
+          <button
+            onClick={() => dispatch({ type: 'RESET' })}
+            style={{
+              padding: '14px 14px', fontSize: '0.75rem', fontWeight: '700',
+              borderRadius: '12px', border: '1.5px solid #fee2e2',
+              background: '#fff5f5', color: '#ef4444', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '4px',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <RotateCcw size={14} />
+          </button>
+        </div>
       </div>
     </div>
   )
