@@ -35,55 +35,8 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
     dispatch({ type: 'CHANGE_STRATEGY', payload: { [type]: val } })
   }
 
-  const [playMode, setPlayMode] = React.useState<'FullOver' | 'BallByBall'>('FullOver')
-
   return (
-    <div className="controls-container card" style={{ 
-      padding: '24px', 
-      borderTop: '4px solid var(--primary)',
-      position: 'relative'
-    }}>
-      {/* Play Mode Tabs */}
-      <div style={{ 
-        display: 'flex', 
-        background: 'var(--bg-alt)', 
-        padding: '4px', 
-        borderRadius: '12px', 
-        marginBottom: '20px',
-        border: '1px solid var(--card-border)'
-      }}>
-        <button 
-          style={{ 
-            flex: 1, 
-            padding: '12px', 
-            background: playMode === 'FullOver' ? 'var(--primary)' : 'transparent',
-            color: playMode === 'FullOver' ? 'white' : 'var(--text-muted)',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '0.9rem',
-            fontWeight: '700'
-          }}
-          onClick={() => setPlayMode('FullOver')}
-        >
-          Full Over
-        </button>
-        <button 
-          style={{ 
-            flex: 1, 
-            padding: '12px', 
-            background: playMode === 'BallByBall' ? 'var(--primary)' : 'transparent',
-            color: playMode === 'BallByBall' ? 'white' : 'var(--text-muted)',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '0.9rem',
-            fontWeight: '700'
-          }}
-          onClick={() => setPlayMode('BallByBall')}
-        >
-          Ball By Ball
-        </button>
-      </div>
-
+    <div className="controls-container card" style={{ padding: '24px', borderTop: '4px solid var(--primary)' }}>
       {/* Bowling Plan Section */}
       {isUserBowling && (
         <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid var(--card-border)' }}>
@@ -221,25 +174,16 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
 
         <button
           className="primary"
-          style={{ 
-            padding: '20px', 
-            fontSize: '1.2rem', 
-            letterSpacing: '0.05em',
-            fontWeight: '900',
-            textTransform: 'uppercase',
-            boxShadow: '0 8px 16px var(--primary-glow)'
-          }}
+          style={{ padding: '16px', fontSize: '1rem', letterSpacing: '0.05em' }}
           disabled={!canRunOver}
-          onClick={() => dispatch({ type: playMode === 'FullOver' ? 'RUN_OVER' : 'RUN_BALL' })}
+          onClick={() => dispatch({ type: 'RUN_OVER' })}
         >
-          {playMode === 'FullOver' 
-            ? (inn.balls % 6 === 0 && inn.balls > 0 ? 'NEXT OVER' : 'CONTINUE OVER')
-            : 'PLAY BALL'}
+          {inn.balls % 6 === 0 && inn.balls > 0 ? 'NEXT OVER' : 'RUN OVER'}
         </button>
 
         <button
           className="secondary"
-          style={{ padding: '16px', fontWeight: '700' }}
+          style={{ padding: '16px' }}
           disabled={!canSimulate}
           onClick={() => dispatch({ type: 'SIMULATE_MATCH' })}
         >

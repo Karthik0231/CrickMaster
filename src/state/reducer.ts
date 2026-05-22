@@ -21,7 +21,6 @@ export const initialMatchState: MatchState = setupNewMatch({
 export type Action =
   | { type: 'INIT'; payload: MatchState }
   | { type: 'RUN_OVER' }
-  | { type: 'RUN_BALL' }
   | { type: 'SIMULATE_MATCH' }
   | { type: 'SELECT_NEXT_BATSMAN'; payload: string } // Player ID
   | { type: 'AUTO_SELECT_BATSMAN' }
@@ -107,37 +106,6 @@ export function matchReducer(state: MatchState, action: Action): MatchState {
       if (state.matchCompleted || state.waitingForBatsman) return state
       const result = simulateOver(state)
       return result.state
-    }
-
-    case 'RUN_BALL': {
-      if (state.matchCompleted || state.waitingForBatsman) return state
-      const { innings: updatedInn } = simulateBall(state)
-      let nextState: MatchState = state.currentInnings === 1
-        ? { ...state, innings1: updatedInn }
-        : { ...state, innings2: updatedInn }
-
-      // Check if innings/match completed after the ball
-      if (updatedInn.completed) {
-        if (state.currentInnings === 1 && !nextState.innings2) {
-          nextState = startSecondInnings(nextState)
-        } else if (state.currentInnings === 2) {
-          nextState.matchCompleted = true
-          const i1 = nextState.innings1!
-          const i2 = nextState.innings2!
-          if (i2.runs >= i2.target!) {
-            const wkts = 10 - i2.wickets
-            nextState.victoryMargin = `${wkts} wicket${wkts !== 1 ? 's' : ''}`
-            nextState.winnerId = i2.battingTeamId
-          } else if (i1.runs > i2.runs) {
-            const runs = i1.runs - i2.runs
-            nextState.victoryMargin = `${runs} run${runs !== 1 ? 's' : ''}`
-            nextState.winnerId = i1.battingTeamId
-          } else {
-            nextState.victoryMargin = 'Match Tied'
-          }
-        }
-      }
-      return nextState
     }
 
     case 'SIMULATE_MATCH': {

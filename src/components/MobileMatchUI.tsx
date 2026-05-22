@@ -1,7 +1,6 @@
 import React from 'react'
 import { MatchState, Strategy } from '../state/types'
 import { Action } from '../state/reducer'
-import { Scoreboard } from './Scoreboard'
 import { OverHistory } from './OverHistory'
 import { CommentaryBox } from './CommentaryBox'
 
@@ -12,7 +11,6 @@ interface Props {
 }
 
 export function MobileMatchUI({ state, dispatch, appDispatch }: Props) {
-  const [playMode, setPlayMode] = React.useState<'FullOver' | 'BallByBall'>('FullOver')
   const inn = state.currentInnings === 1 ? state.innings1! : state.innings2!
   const isUserBatting = state.userTeamId === inn.battingTeamId
   const isUserBowling = state.userTeamId === inn.bowlingTeamId
@@ -57,6 +55,40 @@ export function MobileMatchUI({ state, dispatch, appDispatch }: Props) {
     return `${runsNeeded} runs needed from ${ballsLeft} balls`
   }
 
+  const ModeSelector = ({ pid, current, isOpponent, type }: { pid: string; current: Strategy; isOpponent: boolean; type: 'batsman' | 'bowler' }) => {
+    if (isOpponent) return <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>{current}</span>
+
+    return (
+      <div style={{ display: 'flex', gap: '4px', background: '#f1f5f9', padding: '2px', borderRadius: '8px' }}>
+        {(['Defensive', 'Normal', 'Aggressive'] as Strategy[]).map(m => (
+          <button
+            key={m}
+            style={{
+              flex: 1,
+              padding: '6px 4px',
+              fontSize: '0.65rem',
+              borderRadius: '6px',
+              background: current === m ? 'var(--primary)' : 'transparent',
+              color: current === m ? 'white' : 'var(--text-muted)',
+              border: 'none',
+              fontWeight: '800',
+              boxShadow: current === m ? '0 2px 4px rgba(37, 99, 235, 0.2)' : 'none'
+            }}
+            onClick={() => {
+              if (type === 'batsman') {
+                dispatch({ type: 'CHANGE_BATSMAN_MODE', payload: { batsmanId: pid, strategy: m } })
+              } else {
+                dispatch({ type: 'CHANGE_BOWLER_MODE', payload: { bowlerId: pid, strategy: m } })
+              }
+            }}
+          >
+            {m === 'Defensive' ? 'DEF' : m === 'Normal' ? 'NORM' : 'AGG'}
+          </button>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="mobile-match-ui" style={{ 
       display: 'flex', 
@@ -73,154 +105,117 @@ export function MobileMatchUI({ state, dispatch, appDispatch }: Props) {
       bottom: 0,
       zIndex: 100
     }}>
-      {/* Scoreboard Area */}
-      <div style={{ 
-        padding: '16px 16px 20px', 
-        background: 'transparent', 
-        color: 'white'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-             <div style={{ width: '32px', height: '32px', background: home.color, borderRadius: '50%', border: '2px solid white' }}></div>
-             <span style={{ fontWeight: '900', fontSize: '1rem' }}>{home.short}: {i1?.battingTeamId === home.id ? i1.runs : (i2?.battingTeamId === home.id ? i2.runs : '0')}</span>
+      {/* Header Area - Team Info & Main Score */}
+      <div style={{ padding: '16px 20px 24px', color: 'white' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ width: '48px', height: '48px', background: home.color, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.8)', margin: '0 auto 4px', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}></div>
+            <div style={{ fontWeight: '900', fontSize: '0.8rem', textTransform: 'uppercase' }}>{home.short}</div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-             <span style={{ fontWeight: '900', fontSize: '1rem' }}>{away.short}: {i1?.battingTeamId === away.id ? i1.runs : (i2?.battingTeamId === away.id ? i2.runs : '0')}</span>
-             <div style={{ width: '32px', height: '32px', background: away.color, borderRadius: '50%', border: '2px solid white' }}></div>
+          
+          <div style={{ textAlign: 'center', flex: 1 }}>
+            <div style={{ fontSize: '2.5rem', fontWeight: '900', lineHeight: '1', textShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+              {inn.runs}/{inn.wickets}
+            </div>
+            <div style={{ fontSize: '0.9rem', fontWeight: '700', opacity: 0.9, marginTop: '4px' }}>
+              {Math.floor(inn.balls / 6)}.{inn.balls % 6} <span style={{ opacity: 0.6 }}>OVERS</span>
+            </div>
+          </div>
+
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ width: '48px', height: '48px', background: away.color, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.8)', margin: '0 auto 4px', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}></div>
+            <div style={{ fontWeight: '900', fontSize: '0.8rem', textTransform: 'uppercase' }}>{away.short}</div>
           </div>
         </div>
         
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '1.8rem', fontWeight: '900', marginBottom: '4px' }}>
-            {inn.runs}/{inn.wickets} <span style={{ fontSize: '1rem', opacity: 0.8 }}>({Math.floor(inn.balls / 6)}.{inn.balls % 6} ov)</span>
-          </div>
-          <div style={{ fontSize: '0.85rem', fontWeight: '700', opacity: 0.9 }}>
-            {getStatusText()}
-          </div>
+        <div style={{ 
+          textAlign: 'center', background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', 
+          padding: '8px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: '800'
+        }}>
+          {getStatusText()}
         </div>
       </div>
 
-      {/* Main Content Area */}
+      {/* Main Action Area */}
       <div style={{ 
         flex: 1, 
         background: 'white', 
-        borderTopLeftRadius: '30px', 
-        borderTopRightRadius: '30px',
+        borderTopLeftRadius: '32px', 
+        borderTopRightRadius: '32px',
         padding: '24px 16px',
-        overflowY: 'auto',
-        boxShadow: '0 -10px 30px rgba(0,0,0,0.1)'
+        display: 'flex',
+        flexDirection: 'column',
+        overflowY: 'hidden',
+        boxShadow: '0 -12px 40px rgba(0,0,0,0.15)'
       }}>
-        {/* Play Mode Toggle */}
-        <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '12px', marginBottom: '20px' }}>
-           <button 
-             onClick={() => setPlayMode('FullOver')}
-             style={{ 
-               flex: 1, padding: '10px', borderRadius: '8px', border: 'none', 
-               background: playMode === 'FullOver' ? 'white' : 'transparent', 
-               color: playMode === 'FullOver' ? 'var(--text)' : '#64748b',
-               fontWeight: '800',
-               boxShadow: playMode === 'FullOver' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none'
-             }}
-           >
-             Full Over
-           </button>
-           <button 
-             onClick={() => setPlayMode('BallByBall')}
-             style={{ 
-               flex: 1, padding: '10px', borderRadius: '8px', border: 'none', 
-               background: playMode === 'BallByBall' ? 'white' : 'transparent', 
-               color: playMode === 'BallByBall' ? 'var(--text)' : '#64748b',
-               fontWeight: '800',
-               boxShadow: playMode === 'BallByBall' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none'
-             }}
-           >
-             Ball By Ball
-           </button>
-        </div>
-
-        {/* Big Action Button */}
+        {/* Central Button */}
         <button 
-          onClick={() => dispatch({ type: playMode === 'FullOver' ? 'RUN_OVER' : 'RUN_BALL' })}
+          onClick={() => dispatch({ type: 'RUN_OVER' })}
           className="primary" 
           style={{ 
-            width: '100%', padding: '20px', borderRadius: '16px', fontSize: '1.2rem', 
-            fontWeight: '900', marginBottom: '24px', boxShadow: '0 8px 20px var(--primary-glow)'
+            width: '100%', padding: '24px', borderRadius: '20px', fontSize: '1.5rem', 
+            fontWeight: '900', marginBottom: '24px', boxShadow: '0 12px 24px var(--primary-glow)',
+            textTransform: 'uppercase', letterSpacing: '0.05em'
           }}
+          disabled={state.matchCompleted || state.waitingForBatsman}
         >
-          {playMode === 'FullOver' ? (inn.balls % 6 === 0 && inn.balls > 0 ? 'NEXT OVER' : 'CONTINUE OVER') : 'PLAY BALL'}
+          {inn.balls % 6 === 0 && inn.balls > 0 ? 'NEXT OVER' : 'CONTINUE OVER'}
         </button>
 
-        {/* Player Cards */}
-        <div style={{ display: 'grid', gap: '12px' }}>
-          {/* Striker */}
-          {striker && (
-            <div className="card" style={{ padding: '12px', border: '1px solid var(--primary-glow)', background: 'var(--primary-glow)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '8px', height: '8px', background: '#22c55e', borderRadius: '50%' }}></div>
-                  <span style={{ fontWeight: '800' }}>{striker.name}*</span>
+        {/* Player Stats & Strategy */}
+        <div style={{ display: 'grid', gap: '12px', marginBottom: '20px' }}>
+          {/* Batsmen Row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            {striker && (
+              <div className="card" style={{ padding: '12px', background: 'var(--primary-glow)', border: '1px solid var(--primary)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontWeight: '900', fontSize: '0.85rem', color: 'var(--primary)' }}>{striker.name.split(' ').pop()}*</span>
+                  <span style={{ fontWeight: '900', fontSize: '1rem' }}>{getBatStats(striker.id).r}</span>
                 </div>
-                <span style={{ fontWeight: '900' }}>{getBatStats(striker.id).r} ({getBatStats(striker.id).b})</span>
+                <ModeSelector pid={striker.id} current={inn.strikerStrategy || 'Normal'} isOpponent={!isUserBatting} type="batsman" />
               </div>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                {['Block', 'Rotate', 'Strike', 'Loft'].map(action => (
-                  <button 
-                    key={action}
-                    style={{ 
-                      flex: 1, padding: '8px 4px', fontSize: '0.7rem', borderRadius: '8px', 
-                      background: 'white', border: '1px solid var(--card-border)', fontWeight: '700'
-                    }}
-                    onClick={() => {
-                      const strategy = action === 'Block' ? 'Defensive' : (action === 'Loft' ? 'Aggressive' : 'Normal')
-                      dispatch({ type: 'CHANGE_BATSMAN_MODE', payload: { batsmanId: striker.id, strategy: strategy as Strategy } })
-                    }}
-                  >
-                    {action}
-                  </button>
-                ))}
+            )}
+            {nonStriker && (
+              <div className="card" style={{ padding: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontWeight: '800', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{nonStriker.name.split(' ').pop()}</span>
+                  <span style={{ fontWeight: '800', fontSize: '1rem' }}>{getBatStats(nonStriker.id).r}</span>
+                </div>
+                <ModeSelector pid={nonStriker.id} current={inn.nonStrikerStrategy || 'Normal'} isOpponent={!isUserBatting} type="batsman" />
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          {/* Non-Striker */}
-          {nonStriker && (
-            <div className="card" style={{ padding: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontWeight: '700', color: 'var(--text-muted)' }}>{nonStriker.name}</span>
-                <span style={{ fontWeight: '800' }}>{getBatStats(nonStriker.id).r} ({getBatStats(nonStriker.id).b})</span>
-              </div>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                {['Block', 'Rotate', 'Strike', 'Loft'].map(action => (
-                  <button 
-                    key={action}
-                    style={{ flex: 1, padding: '8px 4px', fontSize: '0.7rem', borderRadius: '8px', background: '#f8fafc', border: 'none', color: '#94a3b8' }}
-                    disabled
-                  >
-                    {action}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Bowler */}
+          {/* Bowler Row */}
           {bowler && (
-            <div className="card" style={{ padding: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                   <div style={{ width: '8px', height: '8px', background: '#ef4444', borderRadius: '50%' }}></div>
-                   <span style={{ fontWeight: '800' }}>{bowler.name}</span>
+            <div className="card" style={{ padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '800', marginBottom: '4px' }}>CURRENT BOWLER</div>
+                <div style={{ fontWeight: '900', fontSize: '1rem' }}>{bowler.name}</div>
+                <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--danger)', marginTop: '2px' }}>
+                  {getBowlStats(bowler.id).w}-{getBowlStats(bowler.id).r} <span style={{ opacity: 0.5, fontSize: '0.7rem' }}>({Math.floor(getBowlStats(bowler.id).b/6)}.{getBowlStats(bowler.id).b%6})</span>
                 </div>
-                <span style={{ fontWeight: '900' }}>{getBowlStats(bowler.id).w}-{getBowlStats(bowler.id).r} ({Math.floor(getBowlStats(bowler.id).b/6)}.{getBowlStats(bowler.id).b%6})</span>
+              </div>
+              <div style={{ width: '120px' }}>
+                <ModeSelector pid={bowler.id} current={inn.bowlingStrategy || 'Normal'} isOpponent={!isUserBowling} type="bowler" />
               </div>
             </div>
           )}
         </div>
 
-        {/* Over History & Commentary */}
-        <div style={{ marginTop: '24px' }}>
-           <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px' }}>Recent Commentary</h4>
-           <CommentaryBox state={state} />
+        {/* Info Tabs / Content */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px', minHeight: 0 }}>
+          <div className="card" style={{ flex: 1, padding: '16px', background: '#f8fafc', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+             <h4 style={{ margin: '0 0 12px 0', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '900', textTransform: 'uppercase' }}>Recent Commentary</h4>
+             <div style={{ flex: 1, overflowY: 'auto' }}>
+                <CommentaryBox state={state} />
+             </div>
+          </div>
+          
+          <div className="card" style={{ padding: '12px', background: '#f8fafc' }}>
+            <h4 style={{ margin: '0 0 8px 0', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '900', textTransform: 'uppercase' }}>Over History</h4>
+            <OverHistory state={state} />
+          </div>
         </div>
       </div>
     </div>
