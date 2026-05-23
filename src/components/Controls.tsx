@@ -89,19 +89,20 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
         )}
 
         {/* Strategy controls */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <div className="controls-strategy-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <div>
             <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>
               Batting {!isUserBatting && <span style={{ color: '#e2e8f0' }}>· AI</span>}
             </div>
-                <div style={{ display: 'flex', gap: '4px' }}>
-              {stratBtn('DEF', inn.battingStrategy === 'Defensive', () => setStrategy('batting', 'Defensive'), '#2563eb')}
-              {stratBtn('NRM', inn.battingStrategy === 'Normal', () => setStrategy('batting', 'Normal'), '#0f172a')}
-              {stratBtn('AGG', inn.battingStrategy === 'Aggressive', () => setStrategy('batting', 'Aggressive'), '#dc2626')}
-            </div>
-            { !isUserBatting && (
-              <div style={{ marginTop: '10px', padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', textAlign: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#94a3b8', border: '1px solid #e2e8f0' }}>
-                Opponent batting strategy is currently {inn.strikerStrategy || 'Normal'} / {inn.nonStrikerStrategy || 'Normal'}
+            {isUserBatting ? (
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {stratBtn('DEF', inn.battingStrategy === 'Defensive', () => setStrategy('batting', 'Defensive'), '#2563eb')}
+                {stratBtn('NRM', inn.battingStrategy === 'Normal', () => setStrategy('batting', 'Normal'), '#0f172a')}
+                {stratBtn('AGG', inn.battingStrategy === 'Aggressive', () => setStrategy('batting', 'Aggressive'), '#dc2626')}
+              </div>
+            ) : (
+              <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', textAlign: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#94a3b8', border: '1px solid #e2e8f0' }}>
+                {inn.strikerStrategy || 'Normal'} / {inn.nonStrikerStrategy || 'Normal'}
               </div>
             )}
           </div>
@@ -109,21 +110,22 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
             <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>
               Bowling {!isUserBowling && <span style={{ color: '#e2e8f0' }}>· AI</span>}
             </div>
-            <div style={{ display: 'flex', gap: '4px' }}>
-              {stratBtn('DEF', inn.bowlingStrategy === 'Defensive', () => setStrategy('bowling', 'Defensive'), '#2563eb')}
-              {stratBtn('NRM', inn.bowlingStrategy === 'Normal', () => setStrategy('bowling', 'Normal'), '#0f172a')}
-              {stratBtn('AGG', inn.bowlingStrategy === 'Aggressive', () => setStrategy('bowling', 'Aggressive'), '#dc2626')}
-            </div>
-            { !isUserBowling && (
-              <div style={{ marginTop: '10px', padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', textAlign: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#94a3b8', border: '1px solid #e2e8f0' }}>
-                Opponent bowling strategy is currently {inn.bowlingStrategy || 'Normal'}
+            {isUserBowling ? (
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {stratBtn('DEF', inn.bowlingStrategy === 'Defensive', () => setStrategy('bowling', 'Defensive'), '#2563eb')}
+                {stratBtn('NRM', inn.bowlingStrategy === 'Normal', () => setStrategy('bowling', 'Normal'), '#0f172a')}
+                {stratBtn('AGG', inn.bowlingStrategy === 'Aggressive', () => setStrategy('bowling', 'Aggressive'), '#dc2626')}
+              </div>
+            ) : (
+              <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', textAlign: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#94a3b8', border: '1px solid #e2e8f0' }}>
+                {inn.bowlingStrategy || 'Normal'}
               </div>
             )}
           </div>
         </div>
 
         {/* Action buttons */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '8px', alignItems: 'center' }}>
+        <div className="controls-action-grid" style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '8px', alignItems: 'center' }}>
           <button
             disabled={!canRunOver}
             onClick={() => dispatch({ type: 'RUN_OVER' })}
@@ -170,6 +172,17 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
           </button>
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 720px) {
+          .controls-strategy-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .controls-action-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }
