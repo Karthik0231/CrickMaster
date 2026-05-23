@@ -122,6 +122,48 @@ function nextBowlerId(team: Team, totalOvers: number, over: number, innings: Inn
   return scoredBowlers[0].id
 }
 
+// Smart match-winning situation logic with risk/reward
+function getMatchWinningStrategy(state: MatchState): Strategy {
+  const inn = state.currentInnings === 2 ? state.innings2 : state.innings1
+  if (!inn) return 'Normal'
+  
+  const config = state.config
+  const totalBalls = config.overs * 6
+  const ballsLeft = totalBalls - inn.balls
+  const oversLeft = ballsLeft / 6
+  const wicketsLeft = 10 - inn.wickets
+  
+  // Second innings specific logic
+  if (state.currentInnings === 2 && inn.target) {
+    const runsNeeded = inn.target - inn.runs
+    const ballsNeeded = runsNeeded > 0 ? runsNeeded : 0
+    const runRateNeeded = oversLeft > 0 ? ballsNeeded / oversLeft : 0
+    const currentRunRate = inn.runs / (inn.balls / 6) || 0
+    
+    // Winning position: can afford to bat conservatively
+    if (runsNeeded <= 20 && ballsLeft > 30) {
+      return 'Defensive'
+    }
+    
+    // Losing position: need aggressive batting
+    if (runRateNeeded > currentRunRate + 3 && wicketsLeft < 4) {
+      return 'Aggressive'
+    }
+    
+    // Critical situation: low wickets, high rate needed
+    if (wicketsLeft <= 2 && runRateNeeded > 12) {
+      return 'Aggressive'
+    }
+    
+    // Comfortable position: balanced approach
+    if (runsNeeded > 50 && wicketsLeft > 5) {
+      return 'Normal'
+    }
+  }
+  
+  return 'Normal'
+}
+
 function updateRunRate(runs: number, balls: number) {
   const overs = balls / 6
   return overs === 0 ? 0 : +(runs / overs).toFixed(2)
@@ -491,6 +533,20 @@ export function getAIBowlingStrategy(state: MatchState): Strategy {
   const oversLeft = ballsLeft / 6
   const wicketsLeft = 10 - inn.wickets
   const momentum = inn.momentum || 0
+
+  // Check match-winning situation for bowling team
+  if (state.currentInnings === 2 && inn.target) {
+    const runsNeeded = inn.target - inn.runs
+    
+    // Chasing team has few runs left and limited time: go all-out aggressive
+    if (runsNeeded <= 15 && ballsLeft < 24 && wicketsLeft > 3) return 'Aggressive'
+    
+    // Chasing team needs high RRR and few balls left: pressure with defensive bowling
+    if ((runsNeeded / (oversLeft || 1)) > 15 && ballsLeft < 30) return 'Defensive'
+    
+    // Winning position: defend the lead with conservative approach
+    if (runsNeeded > 50 && ballsLeft > 30) return 'Defensive'
+  }
 
   // When batting team has huge momentum, bowl more defensively (dot ball focus)
   if (momentum > 60) return 'Defensive'
