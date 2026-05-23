@@ -206,6 +206,40 @@ function generateFixtures(teams: Team[], doubleRound: boolean): TournamentFixtur
     return fixtures.sort(() => Math.random() - 0.5)
 }
 
+function generateWorldCupFixtures(teams: Team[]): TournamentFixture[] {
+    const fixtures: TournamentFixture[] = []
+    const groupSize = 4
+    const numGroups = Math.ceil(teams.length / groupSize)
+    
+    // Seed teams by rating for balanced groups
+    const sortedTeams = [...teams].sort((a, b) => b.battingRating - a.battingRating)
+    const groups: Team[][] = Array(numGroups).fill(null).map(() => [])
+    
+    // Distribute teams in snake pattern for balanced groups
+    for (let i = 0; i < sortedTeams.length; i++) {
+        const groupIdx = i % numGroups
+        groups[groupIdx].push(sortedTeams[i])
+    }
+    
+    // Generate group stage fixtures
+    let fixtureId = 0
+    for (let g = 0; g < groups.length; g++) {
+        for (let i = 0; i < groups[g].length; i++) {
+            for (let j = i + 1; j < groups[g].length; j++) {
+                fixtures.push({
+                    id: `wc-group-${fixtureId++}`,
+                    homeTeamId: groups[g][i].id,
+                    awayTeamId: groups[g][j].id,
+                    round: `Group ${String.fromCharCode(65 + g)}`,
+                    completed: false,
+                })
+            }
+        }
+    }
+    
+    return fixtures
+}
+
 function updateTable(
     table: TournamentState['table'],
     winnerId: string | undefined,
@@ -330,16 +364,65 @@ function progressTournament(fixtures: TournamentFixture[], table: any[], mode: G
         return { updatedFixtures, newStage: allCompleted ? 'Final' : 'Group' };
     }
 
-    const allGroupDone = updatedFixtures.filter(f => f.round === 'Group Stage').every(f => f.completed);
+    const groupStageFixtures = updatedFixtures.filter(f => f.round.startsWith('Group'));
+    const allGroupDone = groupStageFixtures.every(f => f.completed);
 
-    if (allGroupDone && !updatedFixtures.some(f => f.round === 'Semi Final')) {
-        newStage = 'Semi Final';
-        const top4 = table.slice(0, 4);
-        if (top4.length === 4) {
-            updatedFixtures.push({ id: `SF1-${Date.now()}`, homeTeamId: top4[0].teamId, awayTeamId: top4[3].teamId, round: 'Semi Final', completed: false });
-            updatedFixtures.push({ id: `SF2-${Date.now()}`, homeTeamId: top4[1].teamId, awayTeamId: top4[2].teamId, round: 'Semi Final', completed: false });
+    if (allGroupDone && !updatedFixtures.some(f => f.round === 'Quarter Final' || f.round === 'Semi Final')) {
+        newStage = 'Knockout';
+        
+        if (mode === 'WorldCup') {
+            // Get top 2 teams from each group for knockouts (8 teams to quarter finals)
+            const groups = ['Group A', 'Group B', 'Group C', 'Group D'];
+            const knockoutTeams: string[] = [];
+            
+            for (const group of groups) {
+                const groupTeams = table.filter(t => {
+                    const groupMatch = groupStageFixtures.find(f => 
+                        (f.homeTeamId === t.teamId || f.awayTeamId === t.teamId) && f.round === group
+                    );
+                    return !!groupMatch;
+                }).sort((a, b) => b.pts - a.pts || (b.nrr - a.nrr));
+                
+                // Top 2 from each group advance
+                knockoutTeams.push(...groupTeams.slice(0, 2).map(t => t.teamId));
+            }
+            
+            // Create quarter finals (8 → 4)
+            if (knockoutTeams.length >= 8) {
+                updatedFixtures.push({ id: `QF1-${Date.now()}`, homeTeamId: knockoutTeams[0], awayTeamId: knockoutTeams[7], round: 'Quarter Final', completed: false });
+                updatedFixtures.push({ id: `QF2-${Date.now()}`, homeTeamId: knockoutTeams[1], awayTeamId: knockoutTeams[6], round: 'Quarter Final', completed: false });
+                updatedFixtures.push({ id: `QF3-${Date.now()}`, homeTeamId: knockoutTeams[2], awayTeamId: knockoutTeams[5], round: 'Quarter Final', completed: false });
+                updatedFixtures.push({ id: `QF4-${Date.now()}`, homeTeamId: knockoutTeams[3], awayTeamId: knockoutTeams[4], round: 'Quarter Final', completed: false });
+            }
+        } else {
+            // Default knockout logic for IPL
+            const top4 = table.slice(0, 4);
+            if (top4.length === 4) {
+                updatedFixtures.push({ id: `SF1-${Date.now()}`, homeTeamId: top4[0].teamId, awayTeamId: top4[3].teamId, round: 'Semi Final', completed: false });
+                updatedFixtures.push({ id: `SF2-${Date.now()}`, homeTeamId: top4[1].teamId, awayTeamId: top4[2].teamId, round: 'Semi Final', completed: false });
+            }
+        }
+    } else if (mode === 'WorldCup') {
+        // Handle WorldCup quarter finals → semi finals → finals progression
+        const quarterFinals = updatedFixtures.filter(f => f.round === 'Quarter Final');
+        if (quarterFinals.length === 4 && quarterFinals.every(f => f.completed) && !updatedFixtures.some(f => f.round === 'Semi Final')) {
+            newStage = 'Semi Final';
+            const winners = quarterFinals.map(f => f.winnerId!);
+            if (winners.length === 4) {
+                updatedFixtures.push({ id: `SF1-${Date.now()}`, homeTeamId: winners[0], awayTeamId: winners[3], round: 'Semi Final', completed: false });
+                updatedFixtures.push({ id: `SF2-${Date.now()}`, homeTeamId: winners[1], awayTeamId: winners[2], round: 'Semi Final', completed: false });
+            }
+        }
+        
+        const semiF = updatedFixtures.filter(f => f.round === 'Semi Final');
+        if (semiF.length === 2 && semiF.every(f => f.completed) && !updatedFixtures.some(f => f.round === 'Final')) {
+            newStage = 'Final';
+            updatedFixtures.push({ id: `FINAL-${Date.now()}`, homeTeamId: semiF[0].winnerId!, awayTeamId: semiF[1].winnerId!, round: 'Final', completed: false });
+        } else if (updatedFixtures.some(f => f.round === 'Final')) {
+            newStage = 'Final';
         }
     } else {
+        // Default progression for other modes
         const sfs = updatedFixtures.filter(f => f.round === 'Semi Final');
         if (sfs.length === 2) {
             newStage = 'Semi Final';
@@ -351,6 +434,7 @@ function progressTournament(fixtures: TournamentFixture[], table: any[], mode: G
             }
         }
     }
+    
     return { updatedFixtures, newStage };
 }
 
@@ -370,6 +454,8 @@ export function tournamentReducer(state: TournamentState | null, action: Tournam
                         completed: false
                     })
                 }
+            } else if (mode === 'WorldCup') {
+                fixtures = generateWorldCupFixtures(teams)
             } else {
                 fixtures = generateFixtures(teams, mode === 'IPL')
             }
