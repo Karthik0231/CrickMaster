@@ -94,17 +94,14 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
             <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>
               Batting {!isUserBatting && <span style={{ color: '#e2e8f0' }}>· AI</span>}
             </div>
-            {isUserBatting ? (
-              <div style={{ display: 'flex', gap: '4px' }}>
-                {stratBtn('DEF', inn.battingStrategy === 'Defensive', () => setStrategy('batting', 'Defensive'), '#2563eb')}
-                {stratBtn('NRM', inn.battingStrategy === 'Normal', () => setStrategy('batting', 'Normal'), '#0f172a')}
-                {stratBtn('AGG', inn.battingStrategy === 'Aggressive', () => setStrategy('batting', 'Aggressive'), '#dc2626')}
-              </div>
-            ) : (
-              <div style={{ padding: '8px', background: '#f8fafc', borderRadius: '8px', textAlign: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#94a3b8', border: '1px solid #e2e8f0' }}>
-                {inn.strikerStrategy && inn.nonStrikerStrategy
-                  ? `${inn.strikerStrategy.slice(0, 3).toUpperCase()} / ${inn.nonStrikerStrategy.slice(0, 3).toUpperCase()}`
-                  : 'AI DECIDING'}
+                <div style={{ display: 'flex', gap: '4px' }}>
+              {stratBtn('DEF', inn.battingStrategy === 'Defensive', () => setStrategy('batting', 'Defensive'), '#2563eb')}
+              {stratBtn('NRM', inn.battingStrategy === 'Normal', () => setStrategy('batting', 'Normal'), '#0f172a')}
+              {stratBtn('AGG', inn.battingStrategy === 'Aggressive', () => setStrategy('batting', 'Aggressive'), '#dc2626')}
+            </div>
+            { !isUserBatting && (
+              <div style={{ marginTop: '10px', padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', textAlign: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#94a3b8', border: '1px solid #e2e8f0' }}>
+                Opponent batting strategy is currently {inn.strikerStrategy || 'Normal'} / {inn.nonStrikerStrategy || 'Normal'}
               </div>
             )}
           </div>
@@ -112,15 +109,14 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
             <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>
               Bowling {!isUserBowling && <span style={{ color: '#e2e8f0' }}>· AI</span>}
             </div>
-            {isUserBowling ? (
-              <div style={{ display: 'flex', gap: '4px' }}>
-                {stratBtn('DEF', inn.bowlingStrategy === 'Defensive', () => setStrategy('bowling', 'Defensive'), '#2563eb')}
-                {stratBtn('NRM', inn.bowlingStrategy === 'Normal', () => setStrategy('bowling', 'Normal'), '#0f172a')}
-                {stratBtn('AGG', inn.bowlingStrategy === 'Aggressive', () => setStrategy('bowling', 'Aggressive'), '#dc2626')}
-              </div>
-            ) : (
-              <div style={{ padding: '8px', background: '#f8fafc', borderRadius: '8px', textAlign: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#94a3b8', border: '1px solid #e2e8f0' }}>
-                {inn.bowlingStrategy ? inn.bowlingStrategy.toUpperCase() : 'AI DECIDING'}
+            <div style={{ display: 'flex', gap: '4px' }}>
+              {stratBtn('DEF', inn.bowlingStrategy === 'Defensive', () => setStrategy('bowling', 'Defensive'), '#2563eb')}
+              {stratBtn('NRM', inn.bowlingStrategy === 'Normal', () => setStrategy('bowling', 'Normal'), '#0f172a')}
+              {stratBtn('AGG', inn.bowlingStrategy === 'Aggressive', () => setStrategy('bowling', 'Aggressive'), '#dc2626')}
+            </div>
+            { !isUserBowling && (
+              <div style={{ marginTop: '10px', padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', textAlign: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#94a3b8', border: '1px solid #e2e8f0' }}>
+                Opponent bowling strategy is currently {inn.bowlingStrategy || 'Normal'}
               </div>
             )}
           </div>
