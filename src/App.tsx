@@ -83,18 +83,19 @@ export default function App() {
             })!
             dispatch({ type: 'INIT_TOURNAMENT', payload: tState });
         } else if (appState.activeMode === 'WorldCup' && !appState.activeTournamentId) {
-            // World Cup Mode: Initialize with User Team + Auto-generated opponents
+            // World Cup Mode: Initialize with User Team + 15 other international teams (4 groups of 4)
             const userTeam = appState.teams.find(t => t.id === userTeamId)! // Use the selected userTeamId
+            const internationalTeams = ['ind', 'aus', 'eng', 'pak', 'nz', 'rsa', 'sl', 'ban', 'wi', 'afg', 'ire', 'zim', 'uga', 'nam']
             const otherTeams = appState.teams
-                .filter(t => t.id !== userTeamId && ['ind', 'aus', 'eng', 'pak', 'nz', 'rsa', 'sl', 'ban', 'wi', 'afg'].includes(t.id))
+                .filter(t => t.id !== userTeamId && internationalTeams.includes(t.id))
                 .sort((a, b) => b.battingRating - a.battingRating)
-                .slice(0, 7) // Select top 7 opponents for an 8 team tournament
+                .slice(0, 15) // Select 15 teams for a 16-team tournament in 4 groups
 
             const wcTeams = [userTeam, ...otherTeams]
 
             const tState = tournamentReducer(null, {
                 type: 'INIT_TOURNAMENT',
-                payload: { mode: 'WorldCup', teams: wcTeams, name: 'World Cup 2027', userTeamId: userTeam.id, overs }
+                payload: { mode: 'WorldCup', teams: wcTeams, name: 'ICC World Cup 2027', userTeamId: userTeam.id, overs }
             })!
             dispatch({ type: 'INIT_TOURNAMENT', payload: tState });
         } else if (appState.activeMode === 'IPL' && !appState.activeTournamentId && !appState.auction) {
