@@ -62,6 +62,10 @@ function nextBowlerId(team: Team, totalOvers: number, over: number, innings: Inn
 
   const scoredBowlers = available.map(p => {
     let score = p.bowlingRating
+    // Fatigue penalty: avoid overusing same bowler late in match
+    const bowledOvers = innings.bowlerOverCounts[p.id] || 0
+    const fatigue = bowledOvers / Math.max(1, maxOversPerBowler)
+    if (fatigue > 0.75) score -= Math.round((fatigue - 0.75) * 40) // heavy penalty when above 75% quota
     const isSpinner = p.name.toLowerCase().includes('spin') || p.role.includes('SPIN')
     const economy = bowlerEconomy[p.id]
     const hasBowledBefore = (innings.bowlerOverCounts[p.id] || 0) > 0
@@ -120,6 +124,13 @@ function nextBowlerId(team: Team, totalOvers: number, over: number, innings: Inn
   }
 
   return scoredBowlers[0].id
+}
+
+// Team aggression bias: derive from team ratings and simple heuristics
+function teamAggressionBias(state: MatchState, teamId: string) {
+  const team = state.homeTeam.id === teamId ? state.homeTeam : state.awayTeam
+  const bias = (team.battingRating - team.bowlingRating) / 100 // positive favors aggression
+  return Math.max(-0.35, Math.min(0.35, bias))
 }
 
 // Smart match-winning situation logic with risk/reward
@@ -449,81 +460,76 @@ export function getAIStrategy(state: MatchState, isStriker: boolean): Strategy {
   const isSet = faced >= 20
   const isNew = faced <= 7
   const isTailender = player.battingRating < 50
-  const isMidOrder = player.battingRating >= 50 && player.battingRating < 70
 
   const pressure = inn.pressure || 0
   const momentum = inn.momentum || 0
+  const bias = teamAggressionBias(state, inn.battingTeamId)
 
-  // --- FIRST INNINGS ---
+  // Decide base strategy without bias first
+  let base: Strategy = 'Normal'
+
   if (inn.target === undefined) {
-    // Powerplay: Attack unless in collapse
+    // First innings
     if (inn.intentPhase === 'Powerplay') {
-      if (isTailender) return 'Defensive'
-      if (wicketsLeft > 7) return 'Aggressive'
-      if (wicketsLeft > 4 && isSet) return 'Aggressive'
-      return 'Normal'
+      if (isTailender) base = 'Defensive'
+      else if (wicketsLeft > 7) base = 'Aggressive'
+      else if (wicketsLeft > 4 && isSet) base = 'Aggressive'
+      else base = 'Normal'
+    } else if (inn.intentPhase === 'Middle') {
+      if (wicketsLeft < 4 && ballsLeft > 36) base = 'Defensive'
+      else if (isTailender && wicketsLeft < 3) base = 'Aggressive'
+      else if (isNew && wicketsLeft < 6) base = 'Defensive'
+      else if (isSet && momentum > 20) base = 'Aggressive'
+      else base = 'Normal'
+    } else if (inn.intentPhase === 'Death') {
+      if (isTailender && wicketsLeft < 2) base = 'Aggressive'
+      else if (wicketsLeft > 3) base = 'Aggressive'
+      else if (wicketsLeft > 1 && isSet) base = 'Aggressive'
+      else if (wicketsLeft <= 1) base = 'Normal'
+      else base = 'Aggressive'
     }
 
-    // Middle: Consolidate, then accelerate
-    if (inn.intentPhase === 'Middle') {
-      if (wicketsLeft < 4 && ballsLeft > 36) return 'Defensive' // Protect wicket
-      if (isTailender && wicketsLeft < 3) return 'Aggressive' // Tail swings
-      if (isNew && wicketsLeft < 6) return 'Defensive' // Settle when others are falling
-      if (isSet && momentum > 20) return 'Aggressive'
-      return 'Normal'
+    if (wicketsLeft < 4 && ballsLeft > 30) base = 'Defensive'
+  } else {
+    // Chase logic
+    const runsNeeded = inn.target - inn.runs
+    const rrr = runsNeeded / (oversLeft || 1)
+    const crr = inn.runs / (inn.balls / 6 || 1)
+    const rrrGap = rrr - crr
+
+    if (rrr > 18 || (rrr > 14 && ballsLeft < 18)) base = 'Aggressive'
+    else if (rrr < 5 && runsNeeded > 20 && wicketsLeft > 4) base = isNew ? 'Defensive' : 'Normal'
+    else if (rrr < crr - 2 && wicketsLeft > 4 && runsNeeded < 30) base = 'Defensive'
+    else if (rrrGap > 3) {
+      if (isSet && wicketsLeft > 3) base = 'Aggressive'
+      else if (isNew && wicketsLeft < 5) base = 'Normal'
+      else if (wicketsLeft > 5) base = 'Aggressive'
+      else base = 'Normal'
     }
 
-    // Death: All guns blazing if wickets in hand
-    if (inn.intentPhase === 'Death') {
-      if (isTailender && wicketsLeft < 2) return 'Aggressive'
-      if (wicketsLeft > 3) return 'Aggressive'
-      if (wicketsLeft > 1 && isSet) return 'Aggressive'
-      if (wicketsLeft <= 1) return 'Normal' // Last man — don't throw it away
-      return 'Aggressive'
-    }
-
-    // Collapse handling override
-    if (wicketsLeft < 4 && ballsLeft > 30) return 'Defensive'
-    return 'Normal'
+    if (wicketsLeft < 2 && runsNeeded > 8) base = 'Aggressive'
+    if (pressure > 70 && isNew && !isTailender) base = 'Defensive'
+    if (momentum > 50 && isSet && rrrGap <= 1) base = 'Aggressive'
   }
 
-  // --- SECOND INNINGS CHASE ---
-  const runsNeeded = inn.target - inn.runs
-  const rrr = runsNeeded / (oversLeft || 1)
-  const crr = inn.runs / (inn.balls / 6 || 1)
-  const rrrGap = rrr - crr
-
-  // Impossible chase: pure swing
-  if (rrr > 18 || (rrr > 14 && ballsLeft < 18)) return 'Aggressive'
-
-  // Very comfortable: don't lose focus
-  if (rrr < 5 && runsNeeded > 20 && wicketsLeft > 4) {
-    if (isNew) return 'Defensive' // New bat stays careful
-    return 'Normal'
+  // Apply pitch and boundary modifiers
+  if (config.pitch === 'Flat') {
+    if (base === 'Normal' && config.boundarySize === 'Short') base = 'Aggressive'
+    if (base === 'Defensive' && config.boundarySize === 'Short' && momentum > 10) base = 'Normal'
   }
 
-  // Coasting home: take no risk
-  if (rrr < crr - 2 && wicketsLeft > 4 && runsNeeded < 30) return 'Defensive'
-
-  // Tight chase — high pressure ball
-  if (rrrGap > 3) {
-    if (isSet && wicketsLeft > 3) return 'Aggressive'
-    if (isNew && wicketsLeft < 5) return 'Normal' // New bat can't go mad
-    if (wicketsLeft > 5) return 'Aggressive'
-    return 'Normal'
+  // Apply team bias: tilt Normal -> Aggressive or Normal -> Defensive
+  if (bias > 0.12) {
+    if (base === 'Normal') base = 'Aggressive'
+    else if (base === 'Defensive') base = 'Normal'
+  } else if (bias < -0.12) {
+    if (base === 'Normal') base = 'Defensive'
+    else if (base === 'Aggressive') base = 'Normal'
   }
 
-  // Last pair: desperate
-  if (wicketsLeft < 2 && runsNeeded > 8) return 'Aggressive'
-
-  // Pressure-aware: if batting team under immense pressure, new batsman stays calm
-  if (pressure > 70 && isNew && !isTailender) return 'Defensive'
-
-  // Momentum: capitalize when in full flow
-  if (momentum > 50 && isSet && rrrGap <= 1) return 'Aggressive'
-
-  return 'Normal'
+  return base
 }
+
 
 // --- IMPROVED: AI bowling strategy that reacts to momentum and match situations ---
 export function getAIBowlingStrategy(state: MatchState): Strategy {
@@ -661,6 +667,20 @@ export function simulateBall(state: MatchState, isInteractive: boolean = true): 
     isUserBatting,
     isUserBowling
   })
+
+  // Bowler vs batsman impact: better bowlers create more wicket opportunities
+  const bowlerAdv = (bowler.bowlingRating || 50) - (striker.battingRating || 50)
+  const bowlerAdvFactor = Math.max(-30, Math.min(30, bowlerAdv)) / 100
+  weights['W'] = (weights['W'] || 1) * (1 + bowlerAdvFactor * 0.6)
+
+  // Boundary size impacts likelihood of boundaries
+  if (state.config.boundarySize === 'Short') {
+    weights['4'] = (weights['4'] || 1) * 1.15
+    weights['6'] = (weights['6'] || 1) * 1.2
+  } else if (state.config.boundarySize === 'Large') {
+    weights['4'] = (weights['4'] || 1) * 0.85
+    weights['6'] = (weights['6'] || 1) * 0.7
+  }
 
   // --- STRATEGY TUNING: Context-aware weight adjustments ---
 
