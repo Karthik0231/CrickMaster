@@ -40,7 +40,7 @@ export default function App() {
             }
         }
         setMode(mode);
-        dispatch({ type: 'SET_USER_TEAM', payload: '' });
+        // dispatch({ type: 'SET_USER_TEAM', payload: '' });
 
         // Auto-trigger auction setup if entering IPL fresh AND no existing tournament to resume
         if (mode === 'IPL') {
