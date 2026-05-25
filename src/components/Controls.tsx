@@ -89,7 +89,7 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
         )}
 
         {/* Strategy controls */}
-        <div className="controls-strategy-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <div>
             <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>
               Batting {!isUserBatting && <span style={{ color: '#e2e8f0' }}>· AI</span>}
@@ -101,8 +101,10 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
                 {stratBtn('AGG', inn.battingStrategy === 'Aggressive', () => setStrategy('batting', 'Aggressive'), '#dc2626')}
               </div>
             ) : (
-              <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', textAlign: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#94a3b8', border: '1px solid #e2e8f0' }}>
-                {inn.strikerStrategy || 'Normal'} / {inn.nonStrikerStrategy || 'Normal'}
+              <div style={{ padding: '8px', background: '#f8fafc', borderRadius: '8px', textAlign: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#94a3b8', border: '1px solid #e2e8f0' }}>
+                {inn.strikerStrategy && inn.nonStrikerStrategy
+                  ? `${inn.strikerStrategy.slice(0, 3).toUpperCase()} / ${inn.nonStrikerStrategy.slice(0, 3).toUpperCase()}`
+                  : 'AI DECIDING'}
               </div>
             )}
           </div>
@@ -117,15 +119,15 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
                 {stratBtn('AGG', inn.bowlingStrategy === 'Aggressive', () => setStrategy('bowling', 'Aggressive'), '#dc2626')}
               </div>
             ) : (
-              <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', textAlign: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#94a3b8', border: '1px solid #e2e8f0' }}>
-                {inn.bowlingStrategy || 'Normal'}
+              <div style={{ padding: '8px', background: '#f8fafc', borderRadius: '8px', textAlign: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#94a3b8', border: '1px solid #e2e8f0' }}>
+                {inn.bowlingStrategy ? inn.bowlingStrategy.toUpperCase() : 'AI DECIDING'}
               </div>
             )}
           </div>
         </div>
 
         {/* Action buttons */}
-        <div className="controls-action-grid" style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '8px', alignItems: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '8px', alignItems: 'center' }}>
           <button
             disabled={!canRunOver}
             onClick={() => dispatch({ type: 'RUN_OVER' })}
@@ -172,17 +174,6 @@ export function Controls({ state, dispatch }: { state: MatchState; dispatch: Rea
           </button>
         </div>
       </div>
-
-      <style>{`
-        @media (max-width: 720px) {
-          .controls-strategy-grid {
-            grid-template-columns: 1fr !important;
-          }
-          .controls-action-grid {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
     </div>
   )
 }
