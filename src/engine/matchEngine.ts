@@ -33,7 +33,7 @@ function phaseForInnings(inn: InningsState, config: MatchConfig): OverPhase {
   return phaseForBall(inn.balls, config.overs)
 }
 
-// --- IMPROVED: Smarter bowler selection with economy tracking & situational awareness ---
+// --- Smarter bowler selection with economy tracking & situational awareness ---
 function nextBowlerId(team: Team, totalOvers: number, over: number, innings: InningsState): string {
   if (innings.overPlan && innings.overPlan[over]) {
     const plannedId = innings.overPlan[over]
@@ -65,7 +65,7 @@ function nextBowlerId(team: Team, totalOvers: number, over: number, innings: Inn
     // Fatigue penalty: avoid overusing same bowler late in match
     const bowledOvers = innings.bowlerOverCounts[p.id] || 0
     const fatigue = bowledOvers / Math.max(1, maxOversPerBowler)
-    if (fatigue > 0.75) score -= Math.round((fatigue - 0.75) * 40) // heavy penalty when above 75% quota
+    if (fatigue > 0.75) score -= Math.round((fatigue - 0.75) * 40)
     const isSpinner = p.name.toLowerCase().includes('spin') || p.role.includes('SPIN')
     const economy = bowlerEconomy[p.id]
     const hasBowledBefore = (innings.bowlerOverCounts[p.id] || 0) > 0
@@ -84,23 +84,21 @@ function nextBowlerId(team: Team, totalOvers: number, over: number, innings: Inn
     if (isDeath) {
       if (!isSpinner) score += 15
       if (p.bowlingRating > 85) score += 12
-      if (p.yorkerSkill && p.yorkerSkill > 75) score += 10  // Yorker specialists at death
+      if (p.yorkerSkill && p.yorkerSkill > 75) score += 10
       if (isSpinner) score -= 8
     } else if (isPowerplay) {
       if (!isSpinner) score += 8
       if (p.bowlingRating > 80) score += 6
       if (p.bouncerSkill && p.bouncerSkill > 75) score += 5
     } else if (isLateMiddle) {
-      // Late middle: mix of containment and wicket-taking
       if (p.variationSkill && p.variationSkill > 70) score += 8
       if (isSpinner) score += 10
     } else {
-      // Pure middle: spinners preferred
       if (isSpinner) score += 18
       if (p.variationSkill && p.variationSkill > 70) score += 6
     }
 
-    // Save best pace for death (penalise in middle if quota not used)
+    // Save best pace for death
     if (!isDeath && !isPowerplay && !isSpinner && p.bowlingRating > 85) {
       const bowled = innings.bowlerOverCounts[p.id] || 0
       if (bowled < maxOversPerBowler - 1) score -= 18
@@ -129,7 +127,7 @@ function nextBowlerId(team: Team, totalOvers: number, over: number, innings: Inn
 // Team aggression bias: derive from team ratings and simple heuristics
 function teamAggressionBias(state: MatchState, teamId: string) {
   const team = state.homeTeam.id === teamId ? state.homeTeam : state.awayTeam
-  const bias = (team.battingRating - team.bowlingRating) / 100 // positive favors aggression
+  const bias = (team.battingRating - team.bowlingRating) / 100
   return Math.max(-0.35, Math.min(0.35, bias))
 }
 
@@ -137,41 +135,25 @@ function teamAggressionBias(state: MatchState, teamId: string) {
 function getMatchWinningStrategy(state: MatchState): Strategy {
   const inn = state.currentInnings === 2 ? state.innings2 : state.innings1
   if (!inn) return 'Normal'
-  
+
   const config = state.config
   const totalBalls = config.overs * 6
   const ballsLeft = totalBalls - inn.balls
   const oversLeft = ballsLeft / 6
   const wicketsLeft = 10 - inn.wickets
-  
-  // Second innings specific logic
+
   if (state.currentInnings === 2 && inn.target) {
     const runsNeeded = inn.target - inn.runs
     const ballsNeeded = runsNeeded > 0 ? runsNeeded : 0
     const runRateNeeded = oversLeft > 0 ? ballsNeeded / oversLeft : 0
     const currentRunRate = inn.runs / (inn.balls / 6) || 0
-    
-    // Winning position: can afford to bat conservatively
-    if (runsNeeded <= 20 && ballsLeft > 30) {
-      return 'Defensive'
-    }
-    
-    // Losing position: need aggressive batting
-    if (runRateNeeded > currentRunRate + 3 && wicketsLeft < 4) {
-      return 'Aggressive'
-    }
-    
-    // Critical situation: low wickets, high rate needed
-    if (wicketsLeft <= 2 && runRateNeeded > 12) {
-      return 'Aggressive'
-    }
-    
-    // Comfortable position: balanced approach
-    if (runsNeeded > 50 && wicketsLeft > 5) {
-      return 'Normal'
-    }
+
+    if (runsNeeded <= 20 && ballsLeft > 30) return 'Defensive'
+    if (runRateNeeded > currentRunRate + 3 && wicketsLeft < 4) return 'Aggressive'
+    if (wicketsLeft <= 2 && runRateNeeded > 12) return 'Aggressive'
+    if (runsNeeded > 50 && wicketsLeft > 5) return 'Normal'
   }
-  
+
   return 'Normal'
 }
 
@@ -208,9 +190,8 @@ function generateDismissal(
   const isPace = !bowler.name.toLowerCase().includes('spin') && bowler.bowlingRating > 75
   if (isPace && battingStrategy === 'Defensive') types.push('LBW', 'Bowled')
 
-  // Bowler's skill influences dismissal type
   if (bowler.variationSkill && bowler.variationSkill > 75) types.push('Stumped', 'LBW')
-  if (bowler.bouncerSkill && bowler.bouncerSkill > 75) types.push('Caught', 'Caught') // Edge behind
+  if (bowler.bouncerSkill && bowler.bouncerSkill > 75) types.push('Caught', 'Caught')
 
   const type = types[Math.floor(Math.random() * types.length)]
   const bowlName = bowler.name.split(' ').pop()
@@ -229,34 +210,30 @@ function generateDismissal(
 }
 
 function updatePressureAndMomentum(event: BallEvent, inn: InningsState, config: MatchConfig) {
-  // --- MOMENTUM ENGINE (richer, more volatile) ---
+  // --- MOMENTUM ENGINE ---
   if (event.outcome === '4') inn.momentum = Math.min(100, (inn.momentum || 0) + 14)
   else if (event.outcome === '6') inn.momentum = Math.min(100, (inn.momentum || 0) + 22)
   else if (event.outcome === '0') inn.momentum = Math.max(-100, (inn.momentum || 0) - 5)
   else if (event.outcome === '1') inn.momentum = Math.max(-100, Math.min(100, (inn.momentum || 0) + 2))
-  else if (event.wicket) inn.momentum = Math.max(-100, (inn.momentum || 0) - 55) // Wicket kills momentum hard
+  else if (event.wicket) inn.momentum = Math.max(-100, (inn.momentum || 0) - 55)
 
-  // Consecutive dots = momentum drain (bowler seizing control)
   const recentDots = inn.events.slice(-4).filter(e => e.outcome === '0' && !e.wicket).length
   if (recentDots >= 3) inn.momentum = Math.max(-100, (inn.momentum || 0) - 12)
 
-  // Back-to-back boundaries = batting momentum surge
   const recentBounds = inn.events.slice(-3).filter(e => e.outcome === '4' || e.outcome === '6').length
   if (recentBounds >= 2) inn.momentum = Math.min(100, (inn.momentum || 0) + 15)
 
-  // Big over check
   const recentEvents = inn.events.slice(-6)
   const overRuns = recentEvents.reduce((acc, e) => acc + e.runs, 0)
   if (overRuns > 18) inn.momentum = Math.min(100, inn.momentum + 30)
-  else if (overRuns === 0) inn.momentum = Math.max(-100, inn.momentum - 20) // Maiden — massive swing
+  else if (overRuns === 0) inn.momentum = Math.max(-100, inn.momentum - 20)
 
-  // Partnership milestone bonus
   const activePartnership = inn.partnerships[inn.partnerships.length - 1]
   if (activePartnership && activePartnership.runs > 50 && activePartnership.runs % 50 === 0) {
     inn.momentum = Math.min(100, inn.momentum + 20)
   }
 
-  // --- PRESSURE ENGINE (more nuanced) ---
+  // --- PRESSURE ENGINE ---
   let p = 0
   const totalBalls = config.overs * 6
   const ballsLeft = totalBalls - inn.balls
@@ -266,26 +243,20 @@ function updatePressureAndMomentum(event: BallEvent, inn: InningsState, config: 
     const runsLeft = inn.target - inn.runs
     const rrr = +(runsLeft / (oversLeft || 1)).toFixed(2)
 
-    // Chase pressure scales with required rate
     if (rrr > 6) p += Math.max(0, (rrr - 6) * 12)
-    if (rrr > 12) p += (rrr - 12) * 18  // Exponential pressure above 12 rpo
+    if (rrr > 12) p += (rrr - 12) * 18
 
-    // Scoreboard pressure: balls remaining vs runs
     if (ballsLeft < 18 && runsLeft > ballsLeft) p += 70
-    if (ballsLeft < 6 && runsLeft > 6) p += 40 // Last over thriller
+    if (ballsLeft < 6 && runsLeft > 6) p += 40
   }
 
-  // Wicket pressure — each wicket adds; last 3 wickets add more
   p += inn.wickets * 12
-  if (inn.wickets >= 7) p += (inn.wickets - 6) * 20 // Tail pressure spikes
+  if (inn.wickets >= 7) p += (inn.wickets - 6) * 20
 
-  // Recent collapses spike pressure dramatically
   const recentWickets = inn.events.slice(-12).filter(e => e.wicket).length
   p += recentWickets * 30
 
-  // Momentum decay (slower decay = momentum lingers for ~8 balls)
   inn.momentum *= 0.92
-
   inn.pressure = Math.min(100, Math.floor(p))
 }
 
@@ -329,7 +300,7 @@ function applyCareer(event: BallEvent, state: MatchState, inn: InningsState) {
   w.career.runsConceded += event.runs
 }
 
-// --- IMPROVED: Richer, situation-aware commentary ---
+// --- Richer, situation-aware commentary ---
 function commentaryFor(event: BallEvent, striker: Player, bowler: Player): string {
   const base = `${event.over}.${event.ball}: `
   if (event.wicket && event.wicketDetails) return `${base}OUT! ${event.wicketDetails.text}`
@@ -444,7 +415,7 @@ export function setupNewMatch(params: {
   return { initState: state }
 }
 
-// --- IMPROVED: Sophisticated AI batting strategy with settling, panic, composure ---
+// --- Sophisticated AI batting strategy with settling, panic, composure ---
 export function getAIStrategy(state: MatchState, isStriker: boolean): Strategy {
   const inn = state.currentInnings === 1 ? state.innings1! : state.innings2!
   const config = state.config
@@ -465,7 +436,6 @@ export function getAIStrategy(state: MatchState, isStriker: boolean): Strategy {
   const momentum = inn.momentum || 0
   const bias = teamAggressionBias(state, inn.battingTeamId)
 
-  // Decide base strategy without bias first
   let base: Strategy = 'Normal'
 
   if (inn.target === undefined) {
@@ -518,7 +488,7 @@ export function getAIStrategy(state: MatchState, isStriker: boolean): Strategy {
     if (base === 'Defensive' && config.boundarySize === 'Short' && momentum > 10) base = 'Normal'
   }
 
-  // Apply team bias: tilt Normal -> Aggressive or Normal -> Defensive
+  // Apply team bias
   if (bias > 0.12) {
     if (base === 'Normal') base = 'Aggressive'
     else if (base === 'Defensive') base = 'Normal'
@@ -530,8 +500,7 @@ export function getAIStrategy(state: MatchState, isStriker: boolean): Strategy {
   return base
 }
 
-
-// --- IMPROVED: AI bowling strategy that reacts to momentum and match situations ---
+// --- AI bowling strategy that reacts to momentum and match situations ---
 export function getAIBowlingStrategy(state: MatchState): Strategy {
   const inn = state.currentInnings === 1 ? state.innings1! : state.innings2!
   const config = state.config
@@ -540,42 +509,28 @@ export function getAIBowlingStrategy(state: MatchState): Strategy {
   const wicketsLeft = 10 - inn.wickets
   const momentum = inn.momentum || 0
 
-  // Check match-winning situation for bowling team
   if (state.currentInnings === 2 && inn.target) {
     const runsNeeded = inn.target - inn.runs
-    
-    // Chasing team has few runs left and limited time: go all-out aggressive
+
     if (runsNeeded <= 15 && ballsLeft < 24 && wicketsLeft > 3) return 'Aggressive'
-    
-    // Chasing team needs high RRR and few balls left: pressure with defensive bowling
     if ((runsNeeded / (oversLeft || 1)) > 15 && ballsLeft < 30) return 'Defensive'
-    
-    // Winning position: defend the lead with conservative approach
     if (runsNeeded > 50 && ballsLeft > 30) return 'Defensive'
   }
 
-  // When batting team has huge momentum, bowl more defensively (dot ball focus)
   if (momentum > 60) return 'Defensive'
-
-  // When batting team in slump (negative momentum), go for kill
   if (momentum < -30 && wicketsLeft > 3) return 'Aggressive'
 
   if (inn.target !== undefined) {
     const runsNeeded = inn.target - inn.runs
     const rrr = runsNeeded / (oversLeft || 1)
 
-    // They need a lot: bowl defensively to exploit pressure
     if (rrr > 12 && ballsLeft < 36) return 'Defensive'
-
-    // They're cruising: need wickets urgently
     if (rrr < 6 && wicketsLeft > 5) return 'Aggressive'
-
-    // Last few overs, tight game: all out attack
     if (ballsLeft < 18 && runsNeeded < 30) return 'Aggressive'
   }
 
   if (inn.intentPhase === 'Powerplay' && wicketsLeft > 8) return 'Aggressive'
-  if (inn.intentPhase === 'Death') return 'Defensive' // Yorkers, dot focus
+  if (inn.intentPhase === 'Death') return 'Defensive'
 
   if (config.pitch === 'Seaming' || config.pitch === 'Turning') return 'Aggressive'
   if (config.pitch === 'Flat') return 'Defensive'
@@ -668,109 +623,155 @@ export function simulateBall(state: MatchState, isInteractive: boolean = true): 
     isUserBowling
   })
 
-  // Bowler vs batsman impact: better bowlers create more wicket opportunities
+  // ── BOWLER vs BATSMAN IMPACT ──────────────────────────────────────────────
+  // Stronger bowler vs weaker batsman = notably more wicket chance.
+  // Both sides apply so a strong batsman also resists a weak bowler.
   const bowlerAdv = (bowler.bowlingRating || 50) - (striker.battingRating || 50)
   const bowlerAdvFactor = Math.max(-30, Math.min(30, bowlerAdv)) / 100
-  weights['W'] = (weights['W'] || 1) * (1 + bowlerAdvFactor * 0.6)
+  // Raised from 0.6 → 1.2 so quality mismatch really shows up
+  weights['W'] = (weights['W'] || 1) * (1 + bowlerAdvFactor * 1.2)
 
-  // Boundary size impacts likelihood of boundaries
+  // ── BOUNDARY SIZE ─────────────────────────────────────────────────────────
   if (state.config.boundarySize === 'Short') {
-    weights['4'] = (weights['4'] || 1) * 1.15
-    weights['6'] = (weights['6'] || 1) * 1.2
+    weights['4'] *= 1.08   // was 1.15 — realistic small-ground bonus
+    weights['6'] *= 1.10   // was 1.20
   } else if (state.config.boundarySize === 'Large') {
-    weights['4'] = (weights['4'] || 1) * 0.85
-    weights['6'] = (weights['6'] || 1) * 0.7
+    weights['4'] *= 0.82   // was 0.85
+    weights['6'] *= 0.65   // was 0.70
   }
 
-  // --- STRATEGY TUNING: Context-aware weight adjustments ---
+  // ── STRATEGY TUNING ───────────────────────────────────────────────────────
 
-  // Normal strategy: keep the scoreboard ticking
+  // Normal: keep scoreboard ticking, modest dot reduction
   if (sStrat === 'Normal') {
-    weights['1'] *= 1.2
-    weights['0'] *= 0.85
-    weights['W'] *= 0.9
+    weights['1'] *= 1.15   // was 1.20
+    weights['0'] *= 0.90   // was 0.85
+    weights['W'] *= 0.95   // was 0.90 — slight vulnerability restored
   }
 
-  // Aggressive: more boundaries, but controlled wicket risk
+  // Aggressive: boundaries up, but real dismissal risk — key realism fix
   if (sStrat === 'Aggressive') {
-    weights['4'] *= 1.15
-    weights['6'] *= 1.1
-    weights['W'] *= 0.88 // Slightly reduced — aggression ≠ recklessness
-    weights['0'] *= 0.8
+    weights['4'] *= 1.10   // was 1.15
+    weights['6'] *= 1.05   // was 1.10
+    weights['W'] *= 1.18   // was 0.88 → CRITICAL FIX: aggression = real wicket risk
+    weights['0'] *= 0.82   // was 0.80
   }
 
-  // Defensive: block, run singles, avoid dismissal
+  // Defensive: protect wicket, run singles, much fewer boundaries
   if (sStrat === 'Defensive') {
-    weights['0'] *= 1.3
-    weights['1'] *= 1.25
-    weights['4'] *= 0.6
-    weights['6'] *= 0.3
-    weights['W'] *= 0.6
+    weights['0'] *= 1.20   // was 1.30
+    weights['1'] *= 1.20   // was 1.25
+    weights['4'] *= 0.65   // was 0.60
+    weights['6'] *= 0.35   // was 0.30
+    weights['W'] *= 0.72   // was 0.60 → more realistic: even defensive batsmen get out
   }
 
-  // Pressure effect: high pressure increases wicket probability (nerves)
+  // ── PRESSURE EFFECT ───────────────────────────────────────────────────────
+  // Scaled back so it doesn't stack catastrophically with other multipliers
   const pressureFactor = (inn.pressure || 0) / 100
   if (pressureFactor > 0.5) {
-    weights['W'] *= (1 + pressureFactor * 0.4) // Up to 40% more wicket-prone under pressure
-    weights['0'] *= (1 + pressureFactor * 0.2) // More dots under pressure too
+    weights['W'] *= (1 + pressureFactor * 0.28)   // was 0.40
+    weights['0'] *= (1 + pressureFactor * 0.14)   // was 0.20
   }
 
-  // Negative momentum: bowling team in the zone — more dots and wickets
+  // ── MOMENTUM EFFECTS ──────────────────────────────────────────────────────
   const momentum = inn.momentum || 0
+
+  // Negative momentum: bowling team in control
   if (momentum < -30) {
-    weights['W'] *= 1.2
+    weights['W'] *= 1.20
     weights['0'] *= 1.15
     weights['4'] *= 0.85
-    weights['6'] *= 0.8
+    weights['6'] *= 0.80
   }
 
-  // Positive momentum: batting flowing — reduce wickets, boost boundaries
+  // Positive momentum: batting flowing — reduced wicket chance but not eliminated
   if (momentum > 40) {
-    weights['4'] *= 1.12
-    weights['6'] *= 1.08
-    weights['W'] *= 0.82
+    weights['4'] *= 1.07   // was 1.12
+    weights['6'] *= 1.05   // was 1.08
+    weights['W'] *= 0.88   // was 0.82 — momentum doesn't make you invincible
   }
 
-  // New batsman: significantly more vulnerable for first 8 balls
+  // ── NEW BATSMAN VULNERABILITY ─────────────────────────────────────────────
+  // Smoother curve: starts at ~28% extra risk at ball 0, fades to 0 by ball 8
   const ballsFaced = strikerSettled.balls
   if (ballsFaced < 8) {
-    weights['W'] *= (1.5 - ballsFaced * 0.06) // Starts 50% more likely to get out, reduces as they settle
-    weights['4'] *= 0.75
-    weights['6'] *= 0.5
-    weights['0'] *= 1.2
+    weights['W'] *= (1.28 - ballsFaced * 0.04)   // was (1.50 - faced * 0.06)
+    weights['4'] *= 0.78   // was 0.75
+    weights['6'] *= 0.52   // was 0.50
+    weights['0'] *= 1.15   // was 1.20
   }
 
-  // Settled batsman (20+ balls): reward with better shot-making
+  // ── SETTLED BATSMAN REWARD ────────────────────────────────────────────────
   if (ballsFaced >= 20) {
-    weights['W'] *= 0.85
-    weights['4'] *= 1.1
-    if (sStrat === 'Aggressive') weights['6'] *= 1.15
+    weights['W'] *= 0.87   // was 0.85 — slightly higher; even set batsmen get out
+    weights['4'] *= 1.08   // was 1.10
+    if (sStrat === 'Aggressive') weights['6'] *= 1.12   // was 1.15
   }
 
-  // Last over desperation: extreme weight shifts
+  // ── LAST OVER DESPERATION ─────────────────────────────────────────────────
+  // Toned down dramatically — the old 2.2x sixes multiplier caused 25+ run overs
   if (ballsLeft <= 6 && runsNeeded !== undefined && runsNeeded > 8) {
-    weights['6'] *= 2.2
-    weights['4'] *= 1.6
-    weights['W'] *= 1.3 // Risk it
-    weights['0'] *= 0.4
-    weights['1'] *= 0.7
+    weights['6'] *= 1.55   // was 2.20
+    weights['4'] *= 1.25   // was 1.60
+    weights['W'] *= 1.45   // was 1.30 — desperation = more risk
+    weights['0'] *= 0.55   // was 0.40
+    weights['1'] *= 0.80   // was 0.70
   }
 
-  // Bowler on a hat-trick or in a spell (last 2 balls = wickets)
+  // ── HAT-TRICK BALL ────────────────────────────────────────────────────────
   const lastTwoBalls = inn.events.slice(-2)
   if (lastTwoBalls.length === 2 && lastTwoBalls.every(e => e.wicket)) {
-    weights['W'] *= 1.5 // Hat-trick ball — pressure spike
-    weights['0'] *= 1.2
+    weights['W'] *= 1.50
+    weights['0'] *= 1.20
   }
 
-  // Death over: boundary or wicket swings, fewer singles
+  // ── DEATH OVER PHASE ──────────────────────────────────────────────────────
   if (inn.intentPhase === 'Death') {
-    weights['2'] *= 0.8
-    weights['3'] *= 0.6
+    weights['2'] *= 0.82   // was 0.80
+    weights['3'] *= 0.65   // was 0.60
     if (sStrat !== 'Defensive') {
-      weights['4'] *= 1.1
-      weights['6'] *= 1.15
+      weights['4'] *= 1.06   // was 1.10
+      weights['6'] *= 1.08   // was 1.15
     }
+  }
+
+  // ── BOWLER QUALITY FLOOR ──────────────────────────────────────────────────
+  // Ensures even average bowlers (rating 60-70) take wickets at realistic rates.
+  // Without this, weak bowling attacks never take wickets vs strong batting.
+  const bowlerQualityBoost = Math.max(0, (bowler.bowlingRating - 60) / 100)
+  weights['W'] = Math.max(weights['W'] || 1, (weights['W'] || 1) * (1 + bowlerQualityBoost * 0.3))
+
+  // ── WICKETS DROUGHT CORRECTION ────────────────────────────────────────────
+  // If no wicket in last 30 balls, gradually increase wicket probability.
+  // This prevents long stretches where opposition just never falls — a key realism fix.
+  const ballsSinceLastWicket = inn.events.length - [...inn.events].reverse().findIndex(e => e.wicket)
+  const wicketDrought = inn.events.some(e => e.wicket)
+    ? inn.events.length - [...inn.events].map((e, i) => e.wicket ? i : -1).filter(i => i >= 0).pop()!
+    : inn.events.length
+  if (wicketDrought > 30) {
+    const droughtBoost = Math.min(0.60, (wicketDrought - 30) * 0.02)   // +2% per ball after 30, capped at +60%
+    weights['W'] = (weights['W'] || 1) * (1 + droughtBoost)
+  }
+
+  // ── INNINGS WICKET DISTRIBUTION FIX ──────────────────────────────────────
+  // Real T20: avg 6-8 wickets per innings. If only 2-3 have fallen by over 15,
+  // increase wicket weight to pull back toward realistic distribution.
+  const currentOver = Math.floor(inn.balls / 6)
+  const expectedWicketsByNow = (currentOver / state.config.overs) * 7   // expect ~7 total
+  const wicketDeficit = expectedWicketsByNow - inn.wickets
+  if (wicketDeficit > 1.5 && currentOver > 6) {
+    const deficitBoost = Math.min(0.45, wicketDeficit * 0.10)
+    weights['W'] = (weights['W'] || 1) * (1 + deficitBoost)
+  }
+
+  // ── PARTNERSHIP BREAK PRESSURE ────────────────────────────────────────────
+  // Long partnerships in real cricket are eventually broken. After 60-ball
+  // partnership, increase wicket chance to simulate that natural breakthrough.
+  const activePartnership = inn.partnerships[inn.partnerships.length - 1]
+  if (activePartnership && activePartnership.balls > 60) {
+    const partnershipStrain = Math.min(0.35, (activePartnership.balls - 60) * 0.008)
+    weights['W'] = (weights['W'] || 1) * (1 + partnershipStrain)
   }
 
   const out = chooseOutcome(weights)
@@ -832,7 +833,11 @@ export function simulateBall(state: MatchState, isInteractive: boolean = true): 
     if (isInteractive && isUserBatting && inn.nextBatsmanIndex < 11) {
       state.waitingForBatsman = true
     } else if (inn.nextBatsmanIndex < 11) {
-      const remaining = batTeam.players.filter(p => !inn.fallOfWickets.some(f => f.batsmanId === p.id) && p.id !== inn.strikerId && p.id !== inn.nonStrikerId)
+      const remaining = batTeam.players.filter(p =>
+        !inn.fallOfWickets.some(f => f.batsmanId === p.id) &&
+        p.id !== inn.strikerId &&
+        p.id !== inn.nonStrikerId
+      )
       const best = remaining.sort((a, b) => b.battingRating - a.battingRating)[0]
       inn.strikerId = best.id
       inn.nextBatsmanIndex += 1
